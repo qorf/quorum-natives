@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.0.0)
+set(CMAKE_OSX_ARCHITECTURES "x86_64")
+#set(CMAKE_OSX_ARCHITECTURES "arm64")
+
 project(QuorumNatives VERSION 0.1.0)
 
 add_definitions(-DFT2_BUILD_LIBRARY)
