@@ -1,4 +1,7 @@
+Build/
 build/
+Run/
+run/
 .DS_Store
 .vscode
 download/
