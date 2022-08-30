@@ -1,0 +1,163 @@
+package Libraries.Build
+use Libraries.System.File
+use Libraries.Network.NetworkRequest
+use Libraries.Network.NetworkConnection
+use Libraries.Network.NetworkRequestListener
+use Libraries.Network.NetworkResponseEvent
+use Libraries.System.Process
+use Libraries.Containers.Array
+use Libraries.System.ProcessListener
+use Libraries.System.ProcessEvent
+use Libraries.Data.Compression.Decompresser
+
+class Main is NetworkRequestListener, ProcessListener
+    constant text DOWNLOADS = "../download" 
+    constant text MAC_JDK_ARM = "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_aarch64_mac_hotspot_11.0.15_10.tar.gz"
+    constant text MAC_JDK_ARM_NAME = "OpenJDK11U-jdk_aarch64_mac_hotspot_11.0.15_10.tar"
+    constant text MAC_JDK_X86 = "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz"
+    constant text MAC_JDK_X86_NAME = "OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz"
+    constant text WINDOWS_JDK = "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_x64_windows_hotspot_11.0.15_10.zip"
+    constant text WINDOWS_JDK_NAME = "OpenJDK11U-jdk_x64_windows_hotspot_11.0.15_10.zip"
+    constant text FREETYPE = "https://download.savannah.gnu.org/releases/freetype/freetype-2.12.1.tar.gz"
+    constant text FREETYPE_NAME = "freetype-2.12.1.tar.gz"
+    
+
+    number percent = 0
+
+    boolean displayPercent = true
+    action Main
+        //first get all required files for all platforms
+        Download(MAC_JDK_ARM, MAC_JDK_ARM_NAME)
+        Download(MAC_JDK_X86, MAC_JDK_X86_NAME)
+        Download(WINDOWS_JDK, WINDOWS_JDK_NAME)
+        Download(FREETYPE, FREETYPE_NAME)
+
+        Deflate(WINDOWS_JDK_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/windows/x64/jdk-11.0.15+10")
+        Deflate(MAC_JDK_X86_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/mac/x64/jdk-11.0.15+10")
+        Deflate(MAC_JDK_ARM_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/mac/aarch64/jdk-11.0.15+10")
+        Deflate(FREETYPE_NAME, DOWNLOADS + "/freetype-2.12.1", DOWNLOADS + "/freetype")
+    end
+
+    action Deflate(text name, text from, text to)
+        File destination
+        destination:SetPath(to)
+
+        if not destination:Exists()
+            destination:CreateDirectories()
+        else 
+            output "Folder already created: " + to
+            return now
+        end
+
+        File fileFrom
+        fileFrom:SetPath(from)
+
+        //if the folder already exists, kill it, if you have to
+        if fileFrom:Exists()
+            fileFrom:Delete(true)
+        end
+    
+        File downloads
+        downloads:SetPath(DOWNLOADS + "/" + name)
+        if downloads:GetFileExtension() = "zip"
+            Decompresser decompress
+            decompress:DecompressZip(downloads)
+        elseif downloads:GetFileExtension() = "gz"
+            Deflate(name)
+            //Decompresser decompress
+            //decompress:DecompressGZip(downloads, "Test")
+        elseif downloads:GetFileExtension() = "tar"
+            Deflate(name)
+        end
+
+        
+        
+        output "Moving " + fileFrom:GetAbsolutePath() + " to " + destination:GetAbsolutePath()
+
+        boolean value = fileFrom:Move(destination:GetAbsolutePath())
+        if not value 
+            output "Failed move."
+        else
+            output "Moved."
+        end
+    end
+
+    action Deflate(text value)
+        File downloads
+        downloads:SetPath(DOWNLOADS)
+        output downloads:GetAbsolutePath()
+        output "Deflating: " + value
+        //first run the untar commands
+        Process process
+        process:SetDirectory(downloads)
+        process:SetName("tar")
+        Array<text> params
+        params:Add("-xvf")
+        params:Add(value)
+        process:AddListener(me)
+
+        process:SetParameters(params)
+        process:Run()
+    end
+
+    action ProcessStarted(ProcessEvent event)
+//        output "Started"
+    end
+
+    action Error(ProcessEvent event)
+//        output event:GetOutput()
+//        output "Fail"
+    end
+
+    action Output(ProcessEvent event)
+//        output event:GetOutput()
+//        output "Stuff"
+    end
+
+    action ProcessStopped(ProcessEvent event)
+//        output "Finished"
+    end
+
+    action Download(text url, text name)
+        File downloads
+        downloads:SetPath(DOWNLOADS)
+        if not downloads:Exists()
+            downloads:CreateDirectories()
+        end
+
+        downloads:SetPath(DOWNLOADS + "/" + name)
+        if downloads:Exists()
+            output "Found " + name + ", skipping"
+            
+            return now
+        end
+        output "Could not find " + name + ", downloading"
+        NetworkRequest request
+        request:SetRequestTypeToGet()
+        request:AddHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:96.0) Gecko/20100101 Firefox/96.0")
+
+        request:SetWebAddress(url)
+        request:SetDownloadFile(downloads)
+
+        NetworkConnection http
+        http:AddListener(me)
+
+        check
+            http:SendRequest(request)
+        detect e
+            output "Error at request to " + downloads:GetAbsolutePath()
+            e:OutputStackTrace()
+        end    
+    end
+
+    action ResponseReceived(NetworkResponseEvent response)
+        text update = " Download Complete."
+        output "Finished"
+    end
+
+    action DownloadProgress(integer length, integer read)
+        number l = length
+        number r = read
+        me:percent = 100 * (r / l)
+    end
+end

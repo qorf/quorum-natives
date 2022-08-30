@@ -2,21 +2,25 @@ cmake_minimum_required(VERSION 3.0.0)
 set(CMAKE_OSX_ARCHITECTURES "x86_64")
 #set(CMAKE_OSX_ARCHITECTURES "arm64")
 
-project(QuorumNatives VERSION 0.1.0)
+project(QuorumNatives VERSION 2.0)
 
 add_definitions(-DFT2_BUILD_LIBRARY)
 
 SET(CMAKE_CXX_FLAGS "-O2 -std=c++11")
 
 SET(CMAKE_EXE_LINKER_FLAGS "-v")
-include_directories("/Users/stefik/Repositories/quorum-natives/jdk/mac/x64/jdk-11.0.15+10/Contents/Home/include")
-include_directories("/Users/stefik/Repositories/quorum-natives/jdk/mac/x64/jdk-11.0.15+10/Contents/Home/include/darwin")
+if (APPLE)
+    include_directories("jdk/mac/x64/jdk-11.0.15+10/Contents/Home/include")
+    include_directories("jdk/mac/x64/jdk-11.0.15+10/Contents/Home/include/darwin")
+endif (APPLE)
+
+if (WIN32)
+    include_directories("jdk/windows/x64/jdk-11.0.15+10/include/")
+    include_directories("jdk/windows/x64/jdk-11.0.15+10/include/win32")
+endif (WIN32)
+
 
 include_directories("src/main/cpp/freetype/include")
-
-file(GLOB PUBLIC_HEADERS "src/main/cpp/freetype/include/*.h")
-file(GLOB PUBLIC_CONFIG_HEADERS "src/main/cpp/freetype/include/config/*.h")
-file(GLOB PRIVATE_HEADERS "src/main/cpp/freetype/include/internal/*.h")
 
 add_library(
     GameEngineCPlugins 
@@ -40,16 +44,7 @@ add_library(
     src/main/cpp/stb_image.h
     src/main/cpp/FreeTypeStrategy.c
     src/main/cpp/FreeTypeStrategy.h
-    ${PUBLIC_HEADERS}
-  ${PUBLIC_CONFIG_HEADERS}
-  ${PRIVATE_HEADERS}
     )
 
-    include_directories("src/main/cpp/freetype/src/truetype")
-    include_directories("src/main/cpp/freetype/src/sfnt")
-    include_directories("src/main/cpp/freetype/src/autofit")
-    include_directories("src/main/cpp/freetype/src/smooth")
-    include_directories("src/main/cpp/freetype/src/raster")
-    include_directories("src/main/cpp/freetype/src/psaux")
-    include_directories("src/main/cpp/freetype/src/psnames")
+
     target_link_libraries(GameEngineCPlugins ${CMAKE_SOURCE_DIR}/libfreetype.a)

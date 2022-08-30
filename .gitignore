@@ -1,0 +1,6 @@
+build/
+.DS_Store
+.vscode
+download/
+libfreetype.a
+jdk2/
