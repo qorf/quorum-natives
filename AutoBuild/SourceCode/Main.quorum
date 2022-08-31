@@ -20,22 +20,103 @@ class Main is NetworkRequestListener, ProcessListener
     constant text WINDOWS_JDK_NAME = "OpenJDK11U-jdk_x64_windows_hotspot_11.0.15_10.zip"
     constant text FREETYPE = "https://download.savannah.gnu.org/releases/freetype/freetype-2.12.1.tar.gz"
     constant text FREETYPE_NAME = "freetype-2.12.1.tar.gz"
-    
+    boolean verbose = false    
 
     number percent = 0
 
     boolean displayPercent = true
     action Main
         //first get all required files for all platforms
+        output "Downloading JDKs"
         Download(MAC_JDK_ARM, MAC_JDK_ARM_NAME)
         Download(MAC_JDK_X86, MAC_JDK_X86_NAME)
         Download(WINDOWS_JDK, WINDOWS_JDK_NAME)
         Download(FREETYPE, FREETYPE_NAME)
 
+        output "Deflating"
         Deflate(WINDOWS_JDK_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/windows/x64/jdk-11.0.15+10")
         Deflate(MAC_JDK_X86_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/mac/x64/jdk-11.0.15+10")
         Deflate(MAC_JDK_ARM_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/mac/aarch64/jdk-11.0.15+10")
         Deflate(FREETYPE_NAME, DOWNLOADS + "/freetype-2.12.1", DOWNLOADS + "/freetype")
+
+        output "Configuring Freetype"
+        ConfigureFreetype()
+        output "Cleaning"
+        CleanFreetype()
+        output "Building Freetype"
+        BuildFreetype()
+
+        output "Copying Library"
+        //Now move the freetype file out
+        CopyFreeTypeLibrary()
+
+        output "Building Complete."
+    end
+
+    action CopyFreeTypeLibrary
+        //download/freetype/objs/.libs
+        File from
+        from:SetPath(DOWNLOADS + "/freetype/objs/.libs/libfreetype.a")
+
+        File to
+        to:SetPath(DOWNLOADS + "/freetype/libfreetype.a")
+
+        from:Copy(to)
+    end
+
+    action ConfigureFreetype
+        //./configure --without-zlib --without-png --without-bzip2
+        File downloads
+        downloads:SetPath(DOWNLOADS + "/freetype")
+        output downloads:GetAbsolutePath()
+        output "Building Freetype"
+        //first run the untar commands
+        Process process
+        process:SetDirectory(downloads)
+        process:SetName("./configure")
+        Array<text> params
+        params:Add("--without-zlib")
+        params:Add("--without-png")
+        params:Add("--without-bzip2")
+        process:AddListener(me)
+
+        process:SetParameters(params)
+        process:Run()
+    end
+
+    action CleanFreetype
+        //./configure --without-zlib --without-png --without-bzip2
+        File downloads
+        downloads:SetPath(DOWNLOADS + "/freetype")
+        output downloads:GetAbsolutePath()
+        output "Building Freetype"
+        //first run the untar commands
+        Process process
+        process:SetDirectory(downloads)
+        process:SetName("make")
+        Array<text> params
+        params:Add("clean")
+        process:AddListener(me)
+
+        process:SetParameters(params)
+        process:Run()
+    end
+
+    action BuildFreetype
+        //./configure --without-zlib --without-png --without-bzip2
+        File downloads
+        downloads:SetPath(DOWNLOADS + "/freetype")
+        output downloads:GetAbsolutePath()
+        output "Building Freetype"
+        //first run the untar commands
+        Process process
+        process:SetDirectory(downloads)
+        process:SetName("make")
+        Array<text> params
+        process:AddListener(me)
+
+        process:SetParameters(params)
+        process:Run()
     end
 
     action Deflate(text name, text from, text to)
@@ -64,13 +145,9 @@ class Main is NetworkRequestListener, ProcessListener
             decompress:DecompressZip(downloads)
         elseif downloads:GetFileExtension() = "gz"
             Deflate(name)
-            //Decompresser decompress
-            //decompress:DecompressGZip(downloads, "Test")
         elseif downloads:GetFileExtension() = "tar"
             Deflate(name)
         end
-
-        
         
         output "Moving " + fileFrom:GetAbsolutePath() + " to " + destination:GetAbsolutePath()
 
@@ -101,21 +178,27 @@ class Main is NetworkRequestListener, ProcessListener
     end
 
     action ProcessStarted(ProcessEvent event)
-//        output "Started"
+        if verbose
+            output "Starting " + event:GetName()
+        end
     end
 
     action Error(ProcessEvent event)
-//        output event:GetOutput()
-//        output "Fail"
+        if verbose
+            output event:GetOutput()
+        end
     end
 
     action Output(ProcessEvent event)
-//        output event:GetOutput()
-//        output "Stuff"
+        if verbose
+            output event:GetOutput()
+        end
     end
 
     action ProcessStopped(ProcessEvent event)
-//        output "Finished"
+        if verbose
+            output "Finished " + event:GetName()
+        end
     end
 
     action Download(text url, text name)

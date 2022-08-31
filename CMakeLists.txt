@@ -10,18 +10,18 @@ SET(CMAKE_CXX_FLAGS "-O2 -std=c++11")
 
 SET(CMAKE_EXE_LINKER_FLAGS "-v")
 if (APPLE)
-    include_directories("jdk/mac/x64/jdk-11.0.15+10/Contents/Home/include")
-    include_directories("jdk/mac/x64/jdk-11.0.15+10/Contents/Home/include/darwin")
+    include_directories("download/jdk/mac/x64/jdk-11.0.15+10/Contents/Home/include")
+    include_directories("download/jdk/mac/x64/jdk-11.0.15+10/Contents/Home/include/darwin")
 endif (APPLE)
 
 if (WIN32)
-    include_directories("jdk/windows/x64/jdk-11.0.15+10/include/")
-    include_directories("jdk/windows/x64/jdk-11.0.15+10/include/win32")
+    include_directories("download/jdk/windows/x64/jdk-11.0.15+10/include/")
+    include_directories("download/jdk/windows/x64/jdk-11.0.15+10/include/win32")
 endif (WIN32)
 
 
-include_directories("src/main/cpp/freetype/include")
-
+#include_directories("src/main/cpp/freetype/include")
+include_directories("download/freetype/include")
 add_library(
     GameEngineCPlugins 
 
@@ -47,4 +47,4 @@ add_library(
     )
 
 
-    target_link_libraries(GameEngineCPlugins ${CMAKE_SOURCE_DIR}/libfreetype.a)
+    target_link_libraries(GameEngineCPlugins ${CMAKE_SOURCE_DIR}/download/freetype/libfreetype.a)
