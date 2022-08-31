@@ -66,6 +66,9 @@ class Main is NetworkRequestListener, ProcessListener
 
     action ConfigureFreetype
         //./configure --without-zlib --without-png --without-bzip2
+
+        //on M1 processors
+        //./configure --without-zlib --without-png --without-bzip2 -target arm64-apple-macos
         File downloads
         downloads:SetPath(DOWNLOADS + "/freetype")
         output downloads:GetAbsolutePath()
