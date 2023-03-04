@@ -2,6 +2,7 @@
 #include "math.h"
 #include "jni.h"
 
+// #include "stdio.h"
 #include <ft2build.h>
 #include FT_FREETYPE_H
 //#pragma comment(lib, "freetype255b64.lib")
@@ -10,7 +11,6 @@
 FT_Library library;
 FT_Face *face;
 FT_Error error;
-
 
 JNIEXPORT jlong JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy_InitFreeType(JNIEnv * env, jobject clazz)
 {
@@ -44,8 +44,6 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTyp
     FT_Face *f = (FT_Face*)ptr;
     
     error = FT_Set_Char_Size(*f, size << 6, 0, 72, 0);
-    //error = FT_Set_Char_Size(face, size << 6, 0, 72, 0);
-    // Error handling here -- need to determine proper way to return the error from here.
 }
 
 JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy_SetAngleC(JNIEnv * env, jobject jobj, jlong faceHandle, jdouble jAngle)
@@ -60,7 +58,6 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTyp
     FT_Face *f = (FT_Face*)faceHandle;
     
     FT_Set_Transform(*f, &matrix, 0);
-    //FT_Set_Transform(face, &matrix, 0);
 }
 
 JNIEXPORT jobject JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy_LoadBitmap(JNIEnv * env, jobject jobj, jlongArray bitmapData, jchar sym, jlong faceHandle)
@@ -92,6 +89,53 @@ JNIEXPORT jobject JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_Free
     size *= glyph->bitmap.rows;
     
     // (*env)-> ?
+    return (*env)->NewDirectByteBuffer(env, glyph->bitmap.buffer, size);
+}
+
+JNIEXPORT jobject JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy_LoadSDFBitmap(JNIEnv * env, jobject jobj, jlongArray bitmapData, jchar sym, jlong faceHandle)
+{
+    FT_ULong symbol = sym;
+    
+    FT_Face *face = (FT_Face*)faceHandle;
+    
+    FT_GlyphSlot glyph = (*face)->glyph;
+
+    // If an error occurs during FT_Load_Char, return null.
+    error = FT_Load_Char(*face, symbol, FT_LOAD_DEFAULT);
+    if (error)
+        return NULL;
+
+    /*
+    Before rendering to signed distance fields, render the bitmap normally.
+    Rendering to bitmap before rendering to SDF forces Freetype to use an
+    alternative SDF generating strategy (generation from the bitmap instead
+    of from contour information). The bitmap strategy is more stable and more
+    likely to work for arbitrary fonts.
+    */
+    error = FT_Render_Glyph(glyph, FT_RENDER_MODE_NORMAL);
+    if (error)
+        return NULL;
+
+    error = FT_Render_Glyph(glyph, FT_RENDER_MODE_SDF);
+    if (error)
+        return NULL;
+    
+    jlong* data = (jlong*)(*env)->GetPrimitiveArrayCritical(env, bitmapData, 0);
+    data[0] = glyph->bitmap_left;
+    data[1] = glyph->bitmap_top;
+    data[2] = glyph->bitmap.rows;
+    data[3] = glyph->bitmap.width;
+    data[4] = glyph->advance.x;
+    data[5] = glyph->advance.y;
+        
+    (*env)->ReleasePrimitiveArrayCritical(env, bitmapData, data, 0);
+    
+    // If no error occurs, the bitmap must be retrieved and returned as a ByteBuffer.
+    int size = glyph->bitmap.pitch;
+    if (size < 0)
+        size = -size;
+    size *= glyph->bitmap.rows;
+    
     return (*env)->NewDirectByteBuffer(env, glyph->bitmap.buffer, size);
 }
 
@@ -137,4 +181,9 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTyp
 {
     FT_Face *face = (FT_Face*)faceHandle;
     FT_Done_Face(*face);
+}
+
+JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy_GetLastError(JNIEnv * env, jobject jobj)
+{
+    return (jint)error;
 }

@@ -49,6 +49,14 @@ JNIEXPORT jobject JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_Free
 
 /*
  * Class:     plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy
+ * Method:    LoadSDFBitmap
+ * Signature: ([JC)Ljava/nio/ByteBuffer;
+ */
+JNIEXPORT jobject JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy_LoadSDFBitmap
+  (JNIEnv *, jobject, jlongArray, jchar, jlong);
+
+/*
+ * Class:     plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy
  * Method:    GetLineHeightNative
  * Signature: ()J
  */
@@ -94,6 +102,14 @@ JNIEXPORT jlong JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTy
  */
 JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy_DisposeC
   ( JNIEnv*, jobject, jlong);
+
+/*
+ * Class:   plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy
+ * Method:  GetLastError
+ * Signature: (JL)I
+ */
+JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy_GetLastError
+  ( JNIEnv*, jobject);
 
 #ifdef __cplusplus
 }

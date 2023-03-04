@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.0.0)
 #set(CMAKE_OSX_ARCHITECTURES "x86_64")
 #set(CMAKE_OSX_ARCHITECTURES "arm64")
 
+
 project(QuorumNatives VERSION 2.0)
 
 add_definitions(-DFT2_BUILD_LIBRARY)
@@ -23,7 +24,7 @@ endif (WIN32)
 #include_directories("src/main/cpp/freetype/include")
 include_directories("download/freetype/include")
 add_library(
-    GameEngineCPlugins 
+    libGameEngineCPlugins64 
 
     # Sets the library as a shared library.
     MODULE
@@ -46,5 +47,10 @@ add_library(
     src/main/cpp/FreeTypeStrategy.h
     )
 
+    if (APPLE)
+        target_link_libraries(libGameEngineCPlugins64 ${CMAKE_SOURCE_DIR}/download/freetype/libfreetype.a)
+    endif (APPLE)
 
-    target_link_libraries(GameEngineCPlugins ${CMAKE_SOURCE_DIR}/download/freetype/libfreetype.a)
+    if (WIN32)
+        target_link_libraries(libGameEngineCPlugins64 ${CMAKE_SOURCE_DIR}/download/freetype/objs/freetype.lib)
+    endif (WIN32)
