@@ -135,7 +135,6 @@ class Main is NetworkRequestListener, ProcessListener
         output downloads:GetAbsolutePath()
         //first run the untar commands
         Process process
-        process:SetMonitorWaitTime(0)
         process:SetDirectory(downloads)
         process:SetName("xcodebuild")
         Array<text> params
@@ -147,7 +146,7 @@ class Main is NetworkRequestListener, ProcessListener
         params:Add("iphonesimulator")
         params:Add("-destination")
         params:Add("platform=iOS Simulator,id=A38B80D5-07B0-47A9-9051-5E28FA6FF2D2,OS=16.2")
-        //process:AddListener(me)
+        process:AddListener(me)
 
         process:SetParameters(params)
         process:Run()
