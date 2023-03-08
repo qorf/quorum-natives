@@ -7,3 +7,15 @@ run/
 download/
 libfreetype.a
 jdk2/
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+ios/allnativesv2.xcodeproj/
+ios/allnativesv2.build/
+ios/Debug-iphonesimulator/
+ios/Release-iphonesimulator/
+ios/CPackSourceConfig.cmake
+ios/CPackConfig.cmake
+install_manifest.txt
+

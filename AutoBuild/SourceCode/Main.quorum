@@ -9,6 +9,7 @@ use Libraries.Containers.Array
 use Libraries.System.ProcessListener
 use Libraries.System.ProcessEvent
 use Libraries.Data.Compression.Decompresser
+use Libraries.System.Properties
 
 class Main is NetworkRequestListener, ProcessListener
     constant text DOWNLOADS = "../download" 
@@ -25,6 +26,20 @@ class Main is NetworkRequestListener, ProcessListener
     number percent = 0
 
     boolean displayPercent = true
+
+    /*
+        I'm confident there is a better way to do this in cmake, but 
+        as of now, how to get freetype to play nice as a library
+        inside of separate projects is not clear. As such, 
+        for now copy in a separate cmakelists file into freetype
+        and build the library as one complete package.
+
+        This approach is not ideal, largely because it is messy, but it does
+        appear to work.
+    */
+    boolean buildIOS = false
+    boolean isIOSSimulator = false
+    text iosVersion = "16.2"
     action Main
         //first get all required files for all platforms
         output "Downloading JDKs"
@@ -39,6 +54,47 @@ class Main is NetworkRequestListener, ProcessListener
         Deflate(MAC_JDK_ARM_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/mac/aarch64/jdk-11.0.15+10")
         Deflate(FREETYPE_NAME, DOWNLOADS + "/freetype-2.12.1", DOWNLOADS + "/freetype")
 
+        
+    end
+
+    action DoPlatformBuild
+        Properties prop
+        if prop:IsMac() and buildIOS
+            DoIOS()
+        elseif prop:IsMac() or prop:IsWindows()
+            DoDesktop()
+        end
+    end
+
+    /*
+        On IOS, you have to do something special. As far as I can tell, the way we can get it to 
+        work is to generate a cmakelists.txt file specifically for freetype on ios, which then gets
+        sent into the main freetype folder in downloads. Inside this, we have to embed our special requirements
+        for the library as a whole, which means this will break as freetype changes. 
+
+        From there, we have to execute two commands as processes, which look sort of like this:
+
+        executed from the ios folder
+
+        cmake -G Xcode ../download/freetype/CMakeLists.txt -DCMAKE_TOOLCHAIN_FILE=../toolchains/IOS.cmake -B.
+
+        xcodebuild -project allnativesv2.xcodeproj -target ALL_BUILD -sdk iphonesimulator -destination platform=iOS Simulator,id=SOME_KEY,OS=16.2
+    
+        If it works, in the ios folder, it will make a folder that looks something like Debug-iphonesimulator. Inside
+        of that will be a file called liballnatives.a, which is the file we need for the system in question. Overall,
+        this whole process is pretty ugly, but at least for now it seems to solve the problem.
+
+    */
+    action DoIOS
+
+    end
+
+    /*
+        On Desktop, we can use the configure script to compile freetype 
+        and then bundle it into our existing values by running the broader cmake file
+        in the root part of the package.
+    */
+    action DoDesktop
         output "Configuring Freetype"
         ConfigureFreetype()
         output "Cleaning"
