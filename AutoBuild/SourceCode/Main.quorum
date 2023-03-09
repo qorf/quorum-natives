@@ -14,6 +14,8 @@ use Libraries.System.Properties
 class Main is NetworkRequestListener, ProcessListener
     constant text DOWNLOADS = "../download" 
     constant text IOS_FOLDER = "../ios" 
+    constant text IOS_NAME = "ios.a"
+    constant text IOS_SIMULATOR_NAME = "iosSimulator.a"
     constant text CMAKE_LISTS = "CMakeLists.txt" 
     constant text MAC_JDK_ARM = "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_aarch64_mac_hotspot_11.0.15_10.tar.gz"
     constant text MAC_JDK_ARM_NAME = "OpenJDK11U-jdk_aarch64_mac_hotspot_11.0.15_10.tar"
@@ -41,7 +43,7 @@ class Main is NetworkRequestListener, ProcessListener
     */
     boolean buildIOS = true
     boolean isIOSSimulator = false
-    text iosVersion = "16.2"
+    text iosVersion = "14.0"
     action Main
         //first get all required files for all platforms
         output "Downloading JDKs"
@@ -98,7 +100,30 @@ class Main is NetworkRequestListener, ProcessListener
         //now use xcodebuild to build the file
         BuildFreetypeIOS(true)
 
-        //now rename it
+        //now compile it for iOS in general
+        BuildFreetypeIOS(false)
+
+        //now copy the files
+        CopyIOSToReleaseFolder()
+    end
+
+    action CopyIOSToReleaseFolder
+        output "Copying CMakeLists.txt to freetype"
+        File from
+        from:SetPath(IOS_FOLDER + "/Release-iphonesimulator/liballnatives.a")
+
+        File to
+        to:SetPath(IOS_FOLDER + "/releases")
+        if not to:Exists()
+            to:CreateDirectory()
+        end
+
+        to:SetPath(IOS_FOLDER + "/releases/" + IOS_SIMULATOR_NAME)
+        from:Copy(to)
+
+        from:SetPath(IOS_FOLDER + "/Release-iphoneos/liballnatives.a")
+        to:SetPath(IOS_FOLDER + "/releases/" + IOS_NAME)
+        from:Copy(to)
     end
 
     /*
@@ -126,6 +151,8 @@ class Main is NetworkRequestListener, ProcessListener
     end
 
     /*
+        Versions of the SDK available on the machine are available with: xcodebuild -showsdks
+
         xcodebuild -project allnativesv2.xcodeproj -target ALL_BUILD -sdk iphonesimulator -destination platform=iOS Simulator,id=SOME_KEY,OS=16.2
     */
     action BuildFreetypeIOS(boolean simulator)
@@ -143,9 +170,15 @@ class Main is NetworkRequestListener, ProcessListener
         params:Add("-target")
         params:Add("ALL_BUILD")
         params:Add("-sdk")
-        params:Add("iphonesimulator")
-        params:Add("-destination")
-        params:Add("platform=iOS Simulator,id=A38B80D5-07B0-47A9-9051-5E28FA6FF2D2,OS=16.2")
+        if simulator
+            params:Add("iphonesimulator")
+        else
+            params:Add("iphoneos")
+        end
+        params:Add("-configuration")
+        params:Add("Release")
+        //params:Add("-destination")
+        //params:Add("platform=iOS Simulator,OS=14.0")
         process:AddListener(me)
 
         process:SetParameters(params)

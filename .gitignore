@@ -18,4 +18,5 @@ ios/Release-iphonesimulator/
 ios/CPackSourceConfig.cmake
 ios/CPackConfig.cmake
 install_manifest.txt
-
+ios/Release-iphoneos/
+ios/releases/
