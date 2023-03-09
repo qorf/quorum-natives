@@ -193,7 +193,7 @@ src/type42/type42.c
 src/winfonts/winfnt.c
   ../../src/main/cpp/PixelMap.cpp
   ../../src/main/cpp/Matrix4.cpp
-  ../../src/main/cpp/FreeTypeStrategy.c
+  ../../src/ios/Font.c
   ../../src/main/cpp/jpgd_c.cpp
   ../../src/main/cpp/BufferUtils.cpp
   ../../src/main/cpp/gdx2d.c
