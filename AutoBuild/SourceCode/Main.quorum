@@ -9,9 +9,78 @@ use Libraries.Containers.Array
 use Libraries.System.ProcessListener
 use Libraries.System.ProcessEvent
 use Libraries.Data.Compression.Decompresser
+use Libraries.System.Properties
 
+/*
+    The auto-build class assists in building the natives across a set of platforms for Quorum. Each platform is complicated in its own
+    ways and this system mitigates at least some of that complexity through auto-downloading dependencies and other
+    components. Each platform's requirements will be described here so we do not forget how each of them work:
+
+    Windows:
+
+    Mac:
+
+    iOS:
+
+    For iOS, a CMake file is copied into the download/freetype folder and executed. This generates an xcode project, which we then call with xcodebuild.
+    Once this is completed, two files are generated, one for a simulator and another for a physical phone. As the simulator does not need any extra
+    requirements, only the apple physical device requirements will be additionally discussed here.
+
+    Running from Gradle on a simulator:
+
+    ./gradlew ios:launchIPhoneSimulator -Probovm.device.name="iPhone 14"
+
+    Apple iphone physical devices. 
+
+    For the signing identity, we need to first issue the following command:
+
+    find-identity -v -p codesigning 
+
+    This gives something like the following:
+
+    1) 2394827394872349234 "Apple Development: name@name.com (2PT345VCR4)"
+     1 valid identities found    
+
+    The identity is the part past the number:
+
+    Apple Development: name@name.com (2PT345VCR4)
+
+    In order to place items on a phone, we document here a bit of what is needed. First, provisioning profiles can be
+    found in the terminal at: 
+
+    cd ~/Library/MobileDevice/Provisioning\ Profiles
+
+    In order to read a provisioning profile, we can use the following command: security cms -D -i <profile name>
+
+    The tag needed will look something like:
+
+    <key>ExpirationDate</key>
+    <date>2023-03-17T04:45:58Z</date>
+    <key>Name</key>
+    <string>iOS Team Provisioning Profile: org.com</string>
+
+    The profile is "iOS Team Provisioning Profile: org.com"
+
+    This information has to be written into the build.gradle file inside the ios folder and should look like this:
+
+    robovm {
+        iosSignIdentity = "Apple Development: name@name.com (2PT345VCR4)"
+        iosProvisioningProfile = "iOS Team Provisioning Profile: org.com"
+        iosSkipSigning = false
+        stdoutFifo = ""
+        stderrFifo = ""
+    }
+
+    Running from Gradle on a physical device:
+
+    ./gradlew -Dorg.gradle.java.home="/Applications/QuorumStudio.app/Contents/MacOS/Java/jdk/Contents/Home" ios:launchIOSDevice -Probovm.device.name="Andy’s iPhone" --stacktrace
+*/
 class Main is NetworkRequestListener, ProcessListener
     constant text DOWNLOADS = "../download" 
+    constant text IOS_FOLDER = "../ios" 
+    constant text IOS_NAME = "ios.a"
+    constant text IOS_SIMULATOR_NAME = "iosSimulator.a"
+    constant text CMAKE_LISTS = "CMakeLists.txt" 
     constant text MAC_JDK_ARM = "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_aarch64_mac_hotspot_11.0.15_10.tar.gz"
     constant text MAC_JDK_ARM_NAME = "OpenJDK11U-jdk_aarch64_mac_hotspot_11.0.15_10.tar"
     constant text MAC_JDK_X86 = "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz"
@@ -25,6 +94,20 @@ class Main is NetworkRequestListener, ProcessListener
     number percent = 0
 
     boolean displayPercent = true
+
+    /*
+        I'm confident there is a better way to do this in cmake, but 
+        as of now, how to get freetype to play nice as a library
+        inside of separate projects is not clear. As such, 
+        for now copy in a separate cmakelists file into freetype
+        and build the library as one complete package.
+
+        This approach is not ideal, largely because it is messy, but it does
+        appear to work.
+    */
+    boolean buildIOS = true
+    boolean isIOSSimulator = false
+    text iosVersion = "14.0"
     action Main
         //first get all required files for all platforms
         output "Downloading JDKs"
@@ -38,7 +121,151 @@ class Main is NetworkRequestListener, ProcessListener
         Deflate(MAC_JDK_X86_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/mac/x64/jdk-11.0.15+10")
         Deflate(MAC_JDK_ARM_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/mac/aarch64/jdk-11.0.15+10")
         Deflate(FREETYPE_NAME, DOWNLOADS + "/freetype-2.12.1", DOWNLOADS + "/freetype")
+    
+        DoPlatformBuild()
+        output "Done"
+    end
 
+    action DoPlatformBuild
+        Properties prop
+        if prop:IsMac() and buildIOS
+            DoIOS()
+        elseif prop:IsMac() or prop:IsWindows()
+            DoDesktop()
+        end
+    end
+
+    /*
+        On IOS, you have to do something special. As far as I can tell, the way we can get it to 
+        work is to generate a cmakelists.txt file specifically for freetype on ios, which then gets
+        sent into the main freetype folder in downloads. Inside this, we have to embed our special requirements
+        for the library as a whole, which means this will break as freetype changes. 
+
+        From there, we have to execute two commands as processes, which look sort of like this:
+
+        executed from the ios folder
+
+        cmake -G Xcode ../download/freetype/CMakeLists.txt -DCMAKE_TOOLCHAIN_FILE=../toolchains/IOS.cmake -B.
+
+        xcodebuild -project allnativesv2.xcodeproj -target ALL_BUILD -sdk iphonesimulator -destination platform=iOS Simulator,id=SOME_KEY,OS=16.2
+    
+        If it works, in the ios folder, it will make a folder that looks something like Debug-iphonesimulator. Inside
+        of that will be a file called liballnatives.a, which is the file we need for the system in question. Overall,
+        this whole process is pretty ugly, but at least for now it seems to solve the problem.
+
+    */
+    action DoIOS
+        //first copy the special cmake file to the freetype folder
+        CopyIOSCMakeToFreeType()
+
+        //now run cmake from the ios folder
+        CMakeFreetypeIOS()
+
+        //now use xcodebuild to build the file
+        BuildFreetypeIOS(true)
+
+        //now compile it for iOS in general
+        BuildFreetypeIOS(false)
+
+        //now copy the files
+        CopyIOSToReleaseFolder()
+    end
+
+    action CopyIOSToReleaseFolder
+        output "Copying CMakeLists.txt to freetype"
+        File from
+        from:SetPath(IOS_FOLDER + "/Release-iphonesimulator/liballnatives.a")
+
+        File to
+        to:SetPath(IOS_FOLDER + "/releases")
+        if not to:Exists()
+            to:CreateDirectory()
+        end
+
+        to:SetPath(IOS_FOLDER + "/releases/" + IOS_SIMULATOR_NAME)
+        from:Copy(to)
+
+        from:SetPath(IOS_FOLDER + "/Release-iphoneos/liballnatives.a")
+        to:SetPath(IOS_FOLDER + "/releases/" + IOS_NAME)
+        from:Copy(to)
+    end
+
+    /*
+        cmake -G Xcode ../download/freetype/CMakeLists.txt -DCMAKE_TOOLCHAIN_FILE=../toolchains/IOS.cmake -B.
+    */
+    action CMakeFreetypeIOS
+        File downloads
+        downloads:SetPath(IOS_FOLDER)
+        output "Running CMake for IOS from folder"
+        output downloads:GetAbsolutePath()
+        //first run the untar commands
+        Process process
+        process:SetDirectory(downloads)
+        process:SetName("/usr/local/bin/cmake")
+        Array<text> params
+        params:Add("-G")
+        params:Add("Xcode")
+        params:Add("../download/freetype/CMakeLists.txt")
+        params:Add("-DCMAKE_TOOLCHAIN_FILE=../toolchains/IOS.cmake ")
+        params:Add("-B.")
+        process:AddListener(me)
+
+        process:SetParameters(params)
+        process:Run()
+    end
+
+    /*
+        Versions of the SDK available on the machine are available with: xcodebuild -showsdks
+
+        xcodebuild -project allnativesv2.xcodeproj -target ALL_BUILD -sdk iphonesimulator -destination platform=iOS Simulator,id=SOME_KEY,OS=16.2
+    */
+    action BuildFreetypeIOS(boolean simulator)
+        File downloads
+        downloads:SetPath(IOS_FOLDER)
+        output "Building IOS"
+        output downloads:GetAbsolutePath()
+        //first run the untar commands
+        Process process
+        process:SetDirectory(downloads)
+        process:SetName("xcodebuild")
+        Array<text> params
+        params:Add("-project")
+        params:Add("allnativesv2.xcodeproj")
+        params:Add("-target")
+        params:Add("ALL_BUILD")
+        params:Add("-sdk")
+        if simulator
+            params:Add("iphonesimulator")
+        else
+            params:Add("iphoneos")
+        end
+        params:Add("-configuration")
+        params:Add("Release")
+        //params:Add("-destination")
+        //params:Add("platform=iOS Simulator,OS=14.0")
+        process:AddListener(me)
+
+        process:SetParameters(params)
+        process:Run()
+    end
+
+    action CopyIOSCMakeToFreeType
+        output "Copying CMakeLists.txt to freetype"
+        File from
+        from:SetPath(IOS_FOLDER + "/" + CMAKE_LISTS)
+
+        File to
+        to:SetPath(DOWNLOADS + "/freetype/" + CMAKE_LISTS)
+
+        from:Copy(to)
+    end
+
+    /*
+        On Desktop, we can use the configure script to compile freetype 
+        and then bundle it into our existing values by running the broader cmake file
+        in the root part of the package.
+    */
+    action DoDesktop
         output "Configuring Freetype"
         ConfigureFreetype()
         output "Cleaning"
