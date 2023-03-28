@@ -89,6 +89,8 @@ class Main is NetworkRequestListener, ProcessListener
     constant text WINDOWS_JDK_NAME = "OpenJDK11U-jdk_x64_windows_hotspot_11.0.15_10.zip"
     constant text FREETYPE = "https://download.savannah.gnu.org/releases/freetype/freetype-2.12.1.tar.gz"
     constant text FREETYPE_NAME = "freetype-2.12.1.tar.gz"
+    constant text EMSCRIPTEN_REPO_SOURCE = "https://github.com/emscripten-core/emsdk.git"
+    constant text EMSCRIPTEN_REPO_FOLDER = "emsdk"
     boolean verbose = false    
 
     number percent = 0
@@ -108,6 +110,10 @@ class Main is NetworkRequestListener, ProcessListener
     boolean buildIOS = true
     boolean isIOSSimulator = false
     text iosVersion = "14.0"
+
+    // If true, attempt to build the web natives using Emscripten. Only tested on Windows side, currently.
+    boolean buildWebNatives = true
+
     action Main
         //first get all required files for all platforms
         output "Downloading JDKs"
@@ -122,6 +128,12 @@ class Main is NetworkRequestListener, ProcessListener
         Deflate(MAC_JDK_ARM_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/mac/aarch64/jdk-11.0.15+10")
         Deflate(FREETYPE_NAME, DOWNLOADS + "/freetype-2.12.1", DOWNLOADS + "/freetype")
     
+        if buildWebNatives
+            output "Checking for Emscripten repository..."
+            Clone(EMSCRIPTEN_REPO_SOURCE, EMSCRIPTEN_REPO_FOLDER)
+            ActivateEmscripten()
+        end
+
         DoPlatformBuild()
         output "Done"
     end
@@ -355,6 +367,12 @@ class Main is NetworkRequestListener, ProcessListener
 
         if not destination:Exists()
             destination:CreateDirectories()
+            /*
+            Delete the destination. Any directories leading up to it are still made, but the final directory no longer exists.
+            This is a necessary step for Windows platforms, where attempting to move a directory into another that already exists
+            (even if it's empty) will fail.
+            */
+            destination:Delete()
         else 
             output "Folder already created: " + to
             return now
@@ -461,6 +479,79 @@ class Main is NetworkRequestListener, ProcessListener
             output "Error at request to " + downloads:GetAbsolutePath()
             e:OutputStackTrace()
         end    
+    end
+
+    action Clone(text url, text folderName)
+        File downloads
+        downloads:SetPath(DOWNLOADS)
+        if not downloads:Exists()
+            downloads:CreateDirectories()
+        end
+
+        downloads:SetPath(DOWNLOADS + "/" + folderName)
+        if downloads:Exists()
+            output "Found " + folderName + ", skipping"
+            
+            return now
+        end
+        output "Could not find " + folderName + ", cloning from " + url
+
+        Process process
+        File file
+        file:SetPath(DOWNLOADS)
+        process:SetDirectory(file)
+        process:SetName("git")
+        Array<text> parameters
+        parameters:Add("clone")
+        parameters:Add(url)
+        process:SetParameters(parameters)
+        process:AddListener(me)
+        process:Run()
+    end
+
+    // Update Emscripten and activate the command line tools (i.e. set paths etc.)
+    action ActivateEmscripten
+        File emsdkFolder
+        emsdkFolder:SetPath(DOWNLOADS + "/" + EMSCRIPTEN_REPO_FOLDER)
+
+        Process pull
+        pull:SetDirectory(emsdkFolder)
+        pull:SetName("git")
+        Array<text> parameters
+        parameters:Add("pull")
+        pull:SetParameters(parameters)
+        pull:AddListener(me)
+        pull:Run()
+
+        parameters:Empty()
+
+        Process install
+        install:SetDirectory(emsdkFolder)
+        install:SetName("emsdk")
+        parameters:Add("install")
+        parameters:Add("latest")
+        install:SetParameters(parameters)
+        install:AddListener(me)
+        install:Run()
+
+        parameters:Empty()
+
+        Process activate
+        activate:SetDirectory(emsdkFolder)
+        activate:SetName("emsdk")
+        parameters:Add("activate")
+        parameters:Add("latest")
+        activate:SetParameters(parameters)
+        activate:AddListener(me)
+        activate:Run()
+
+        parameters:Empty()
+
+        Process source
+        source:SetDirectory(emsdkFolder)
+        source:SetName("emsdk_env.bat")
+        source:AddListener(me)
+        source:Run()
     end
 
     action ResponseReceived(NetworkResponseEvent response)
