@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.0.0)
-#set(CMAKE_OSX_ARCHITECTURES "x86_64")
-#set(CMAKE_OSX_ARCHITECTURES "arm64")
+SET(ARCH OFF)
 
 
 project(QuorumNatives VERSION 2.0)
@@ -11,8 +10,19 @@ SET(CMAKE_CXX_FLAGS "-O2 -std=c++11")
 
 SET(CMAKE_EXE_LINKER_FLAGS "-v")
 if (APPLE)
-    include_directories("download/jdk/mac/x64/jdk-11.0.15+10/Contents/Home/include")
-    include_directories("download/jdk/mac/x64/jdk-11.0.15+10/Contents/Home/include/darwin")
+    message("Building for Mac OS X ")
+    if(ARCH) 
+        message("Building for ARM")
+        set(CMAKE_OSX_ARCHITECTURES "arm64")
+        include_directories("download/jdk/mac/aarch64/jdk-11.0.15+10/Contents/Home/include")
+        include_directories("download/jdk/mac/aarch64/jdk-11.0.15+10/Contents/Home/include/darwin")
+    else()
+        message("Building for x86_64")
+        set(CMAKE_OSX_ARCHITECTURES "x86_64")
+        include_directories("download/jdk/mac/x64/jdk-11.0.15+10/Contents/Home/include")
+        include_directories("download/jdk/mac/x64/jdk-11.0.15+10/Contents/Home/include/darwin")
+    endif()
+    
 endif (APPLE)
 
 if (WIN32)
@@ -48,7 +58,13 @@ add_library(
     )
 
     if (APPLE)
-        target_link_libraries(libGameEngineCPlugins64 ${CMAKE_SOURCE_DIR}/download/freetype/libfreetype.a)
+        if(ARCH) 
+            message("Linking for ARM")
+            target_link_libraries(libGameEngineCPlugins64 ${CMAKE_SOURCE_DIR}/download/freetype/FreeType_Release/freetype_Arm.a)
+        else()
+            message("Linking for x86_64")
+            target_link_libraries(libGameEngineCPlugins64 ${CMAKE_SOURCE_DIR}/download/freetype/FreeType_Release/freetype_x86_64.a)
+        endif()
     endif (APPLE)
 
     if (WIN32)
