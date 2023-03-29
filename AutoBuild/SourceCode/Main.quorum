@@ -87,14 +87,15 @@ class Main is NetworkRequestListener, ProcessListener
     constant text MAC_JDK_X86_NAME = "OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz"
     constant text WINDOWS_JDK = "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_x64_windows_hotspot_11.0.15_10.zip"
     constant text WINDOWS_JDK_NAME = "OpenJDK11U-jdk_x64_windows_hotspot_11.0.15_10.zip"
-    constant text FREETYPE = "https://download.savannah.gnu.org/releases/freetype/freetype-2.12.1.tar.gz"
-    constant text FREETYPE_NAME = "freetype-2.12.1.tar.gz"
     constant text EMSCRIPTEN_REPO_SOURCE = "https://github.com/emscripten-core/emsdk.git"
     constant text EMSCRIPTEN_REPO_FOLDER = "emsdk"
+    constant text FREETYPE = "https://download.savannah.gnu.org/releases/freetype/freetype-2.13.0.tar.gz"
+    constant text FREETYPE_NAME = "freetype-2.13.0.tar.gz"
+
     boolean verbose = false    
 
     number percent = 0
-
+    boolean arm = false
     boolean displayPercent = true
 
     /*
@@ -126,7 +127,7 @@ class Main is NetworkRequestListener, ProcessListener
         Deflate(WINDOWS_JDK_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/windows/x64/jdk-11.0.15+10")
         Deflate(MAC_JDK_X86_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/mac/x64/jdk-11.0.15+10")
         Deflate(MAC_JDK_ARM_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/mac/aarch64/jdk-11.0.15+10")
-        Deflate(FREETYPE_NAME, DOWNLOADS + "/freetype-2.12.1", DOWNLOADS + "/freetype")
+        Deflate(FREETYPE_NAME, DOWNLOADS + "/freetype-2.13.0", DOWNLOADS + "/freetype")
     
         if buildWebNatives
             output "Checking for Emscripten repository..."
@@ -278,6 +279,37 @@ class Main is NetworkRequestListener, ProcessListener
         in the root part of the package.
     */
     action DoDesktop
+        Properties prop
+        if prop:IsMac()
+            DoMac()
+        elseif prop:IsWindows()
+            DoWindows()
+        end
+    end
+
+    action DoMac
+        if arm
+            output "Configuring Freetype for ARM"
+        else
+            output "Configuring Freetype for x64"
+        end
+        ConfigureFreetype()
+        output "Cleaning"
+        //CleanFreetype()
+        output "Building Freetype"
+        BuildFreetype()
+
+        output "Copying Library"
+        //Now move the freetype file out
+        if arm
+            CopyFreeTypeLibrary("/freetype/FreeType_Release/freetype_Arm.a")
+        else
+            CopyFreeTypeLibrary("/freetype/FreeType_Release/freetype_x86_64.a")
+        end
+        output "Building Complete."
+    end
+
+    action DoWindows
         output "Configuring Freetype"
         ConfigureFreetype()
         output "Cleaning"
@@ -287,19 +319,22 @@ class Main is NetworkRequestListener, ProcessListener
 
         output "Copying Library"
         //Now move the freetype file out
-        CopyFreeTypeLibrary()
+        //CopyFreeTypeLibrary("/freetype/libfreetype.a")
 
         output "Building Complete."
     end
 
-    action CopyFreeTypeLibrary
+    action CopyFreeTypeLibrary(text location)
         //download/freetype/objs/.libs
         File from
         from:SetPath(DOWNLOADS + "/freetype/objs/.libs/libfreetype.a")
 
         File to
-        to:SetPath(DOWNLOADS + "/freetype/libfreetype.a")
-
+        to:SetPath(DOWNLOADS + location)
+        File mom = to:GetParentDirectory()
+        if mom not= undefined and not mom:Exists()
+            mom:CreateDirectories()
+        end
         from:Copy(to)
     end
 
@@ -310,8 +345,6 @@ class Main is NetworkRequestListener, ProcessListener
         //./configure --without-zlib --without-png --without-bzip2 -target arm64-apple-macos
         File downloads
         downloads:SetPath(DOWNLOADS + "/freetype")
-        output downloads:GetAbsolutePath()
-        output "Building Freetype"
         //first run the untar commands
         Process process
         process:SetDirectory(downloads)
@@ -320,6 +353,11 @@ class Main is NetworkRequestListener, ProcessListener
         params:Add("--without-zlib")
         params:Add("--without-png")
         params:Add("--without-bzip2")
+        if arm
+            params:Add("-target")
+            params:Add("arm64-apple-macos")
+        end
+
         process:AddListener(me)
 
         process:SetParameters(params)
@@ -330,8 +368,6 @@ class Main is NetworkRequestListener, ProcessListener
         //./configure --without-zlib --without-png --without-bzip2
         File downloads
         downloads:SetPath(DOWNLOADS + "/freetype")
-        output downloads:GetAbsolutePath()
-        output "Building Freetype"
         //first run the untar commands
         Process process
         process:SetDirectory(downloads)
@@ -348,8 +384,6 @@ class Main is NetworkRequestListener, ProcessListener
         //./configure --without-zlib --without-png --without-bzip2
         File downloads
         downloads:SetPath(DOWNLOADS + "/freetype")
-        output downloads:GetAbsolutePath()
-        output "Building Freetype"
         //first run the untar commands
         Process process
         process:SetDirectory(downloads)
