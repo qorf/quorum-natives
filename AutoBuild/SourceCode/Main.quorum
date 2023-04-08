@@ -34,7 +34,7 @@ use Libraries.System.Properties
 
     For the signing identity, we need to first issue the following command:
 
-    find-identity -v -p codesigning 
+    security find-identity -v -p codesigning 
 
     This gives something like the following:
 
