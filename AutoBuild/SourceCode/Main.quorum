@@ -10,6 +10,7 @@ use Libraries.System.ProcessListener
 use Libraries.System.ProcessEvent
 use Libraries.Data.Compression.Decompresser
 use Libraries.System.Properties
+use Libraries.Containers.HashTable
 
 /*
     The auto-build class assists in building the natives across a set of platforms for Quorum. Each platform is complicated in its own
@@ -19,6 +20,8 @@ use Libraries.System.Properties
     Windows:
 
     Mac:
+    For Mac, you need to turn ARM to off, then run the program and wait for the file. Then, turn it on, and wait again. It is slow and annoying, but 
+    automated and seems to work.
 
     iOS:
 
@@ -95,7 +98,7 @@ class Main is NetworkRequestListener, ProcessListener
     boolean verbose = false    
 
     number percent = 0
-    boolean arm = false
+    boolean arm = true
     boolean displayPercent = true
 
     /*
@@ -108,7 +111,7 @@ class Main is NetworkRequestListener, ProcessListener
         This approach is not ideal, largely because it is messy, but it does
         appear to work.
     */
-    boolean buildIOS = true
+    boolean buildIOS = false
     boolean isIOSSimulator = false
     text iosVersion = "14.0"
 
@@ -117,6 +120,9 @@ class Main is NetworkRequestListener, ProcessListener
 
     action Main
         //first get all required files for all platforms
+Properties prop
+        output "Architecture: " + prop:GetArchitecture()
+        
         output "Downloading JDKs"
         Download(MAC_JDK_ARM, MAC_JDK_ARM_NAME)
         Download(MAC_JDK_X86, MAC_JDK_X86_NAME)
@@ -135,6 +141,7 @@ class Main is NetworkRequestListener, ProcessListener
             ActivateEmscripten()
         end
 
+        
         DoPlatformBuild()
         output "Done"
     end
@@ -354,8 +361,10 @@ class Main is NetworkRequestListener, ProcessListener
         params:Add("--without-png")
         params:Add("--without-bzip2")
         if arm
-            params:Add("-target")
-            params:Add("arm64-apple-macos")
+            HashTable<text, text> env = process:GetEnvironment()
+            env:Add("PKG_CONFIG_PATH","/opt/homebrew/lib/pkgconfig")
+env:Add("CFLAGS","-arch arm64 -I/opt/homebrew/include -Wall -g -O2 -fvisibility=hidden -pedantic -std=c99 -pthread")
+env:Add("LDFLAGS","-arch arm64 -L/opt/homebrew/lib")
         end
 
         process:AddListener(me)

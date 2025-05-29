@@ -139,6 +139,26 @@ JNIEXPORT jobject JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_Free
     return (*env)->NewDirectByteBuffer(env, glyph->bitmap.buffer, size);
 }
 
+JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy_GetFamily(JNIEnv * env, jobject jobj, jlong faceHandle)
+{
+    FT_Face *face = (FT_Face*)faceHandle; 
+    if (face == NULL || (*face)->family_name == NULL) {
+        return (*env)->NewStringUTF(env, "");
+    }
+
+    return (*env)->NewStringUTF(env, (*face)->family_name);
+}
+
+JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy_GetStyleName(JNIEnv * env, jobject jobj, jlong faceHandle)
+{
+    FT_Face *face = (FT_Face*)faceHandle; 
+    if (face == NULL || (*face)->style_name == NULL) {
+        return (*env)->NewStringUTF(env, "");
+    }
+
+    return (*env)->NewStringUTF(env, (*face)->style_name);
+}
+
 JNIEXPORT jlong JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy_GetLineHeightNative(JNIEnv * env, jobject jobj, jlong faceHandle)
 {
     FT_Face *face = (FT_Face*)faceHandle; 

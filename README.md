@@ -11,26 +11,83 @@ To build Quorum-natives, follow these procedures:
 sudo "/Applications/CMake.app/Contents/bin/cmake-gui" --install
 
 3.	Install Quorum Studio 4.3 or above: https://quorumlanguage.com/download.html
-4.	Open the project "AutoBuild" in Quorum Studio and run it. This will download dependencies, including various JDKs and Freetype, and then compile freetype. The process can take some time on first run, like 5 or 10 minutes, depending on the machine. Subsequent builds are smart enough to skip most of the lengthy work. This will build freetype only in x86_64 mode only, for reasons that are not clear. 
-5.	The compiled freetype should show up in FreeType_Release/freetype_x86_64.a. 
-6.	Now run the following command from the console in the download/freetype folder on an ARM processor. I am sure there is a workaround for this, but this is the current procedure
 
+4. The most crucial step in getting the build correct on Mac OS X is to get both an x86 and an ARM setup of homebrew correct. To do this, you first install ARM:
+
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+eval "$(/opt/homebrew/bin/brew shellenv)"
+
+5. Then you install it in x86 with Rosetta
+
+softwareupdate --install-rosetta --agree-to-license
+arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+6. Once you have brew installed, you need two esoteric libraries for freetype, harfbuzz and brotli. You need to do this for ARM and x86_64. For ARM, you do:
+
+eval "$(/opt/homebrew/bin/brew shellenv)"
+brew install harfbuzz brotli
+
+7. For x86_64, you need to do
+
+arch -x86_64 /usr/local/bin/brew install harfbuzz brotli
+
+8. Now double check you really did get everything installed for both architectures
+
+file /opt/homebrew/lib/libharfbuzz.dylib
+file /usr/local/lib/libharfbuzz.dylib
+
+9.	Open the project "AutoBuild" in Quorum Studio and run it. This will download dependencies, including various JDKs and Freetype, and then compile freetype. The process can take some time on first run, like 5 or 10 minutes, depending on the machine. Subsequent builds are smart enough to skip most of the lengthy work. This will build freetype only in x86_64 mode only. This allows you to run configure scripts automatically. For whatever strange reason, it works from within Quorum, but running the configure scripts outside of Quorum breaks on my machine. 
+
+Despite this, this is as close to the original configure scripts as I can get on Mac, even though they only work from within auto build:
+
+ARM (in theory)
+PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig \
+CFLAGS="-arch arm64 -I/opt/homebrew/include -Wall -g -O2 -fvisibility=hidden -pedantic -std=c99 -pthread" \
+LDFLAGS="-arch arm64 -L/opt/homebrew/lib" \
+./configure \
+  --without-zlib \
+  --without-png \
+  --without-bzip2
+
+make clean
+make
+
+x86_64
+./configure \
+  --without-zlib \
+  --without-png \
+  --without-bzip2 \
+
+make clean
+make
+
+You can also do this on one line:
 ./configure --without-zlib --without-png --without-bzip2 -target arm64-apple-macos
 
-7.	Copy the file at objs/.libs/libfreetype.a to FreeType_Release/freetype_Arm.a in the freetype folder in downloads
-8.	Double check the architecture of both files is correct:
+If you used auto-build, you should get:
+The compiled freetype should show up in FreeType_Release/freetype_x86_64.a. 
+
+If you tried to do this manually, and good luck, manually move the file at objs/.libs/libfreetype.a to FreeType_Release/freetype_Arm.a in the freetype folder in downloads
+
+10.	Double check the architecture of both files is correct:
+
 lipo -info FreeType_Release/freetype_Arm.a
-9.	Download and install VSCode: https://code.visualstudio.com
-10.	Open the root folder of quorum-natives
-11.	Install the CMake plugin for VSCode. This will pop up automatically for install when opening CMakeLists.txt.
-12.	On line 2, call Set(ARCH OFF) which will put the files in x86_64 mode for building.
-13.	Select Build All. This will create a file called libGameEngineCPlugins.so in the root folder.
-14.	Move the compiled file to the name libGameEngineCPlugins.so.
-15.	Change the architecture to ON and then move that file to libGameEngineCPluginsArm.so
-16.	Finally, move both files to quorum-language/Quorum/Libraries/Standard/Native/Libraries.Game
-17.	Re-run the standard library and do a standard library override.
+
+11.	Download and install VSCode: https://code.visualstudio.com
+12.	Open the root folder of quorum-natives
+13.	Install the CMake plugin for VSCode. This will pop up automatically for install when opening CMakeLists.txt.
+14.	On line 2, call Set(ARCH OFF) which will put the files in x86_64 mode for building.
+15.	Select Build All. This will create a file called libGameEngineCPlugins.so in the root folder.
+16.	Move the compiled file to the name libGameEngineCPlugins.so.
+17.	Change the architecture to ON and then move that file to libGameEngineCPluginsArm.so
+18.	Finally, move both files to quorum-language/Quorum/Libraries/Standard/Native/Libraries.Game
+19.	Re-run the standard library and do a standard library override.
 
 You can also combine them with commands like lipo libGameEngineCPlugins.so libGameEngineCPluginsArm.so -create -output Mac.so
+
+20. Rejoice. This step sucks, but it makes sure freetype is exactly the version we need in the way we need it.
 
 ## iPhone and the iPhone Simulator
 Compiling for iPhone is generally simpler, as the auto-build script is a bit smarter. Essentially, you set a flag and run the program. 
