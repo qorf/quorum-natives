@@ -1,8 +1,16 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.18)
 
-# Build both Mac architectures at once. Set before project() so FreeType
-# (added below) is built for both too.
-if (APPLE AND NOT CMAKE_OSX_ARCHITECTURES)
+# Builds the natives for one platform per build folder:
+#   Mac:     cmake -S . -B build/mac
+#            (both architectures at once, libGameEngineCPlugins.so)
+#   Windows: cmake -S . -B build/windows -DCMAKE_TOOLCHAIN_FILE=toolchains/mingw-w64.cmake
+#            (cross-compiled on a Mac, libGameEngineCPlugins64.dll)
+#   iOS:     cmake -S . -B build/ios -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos -DCMAKE_OSX_ARCHITECTURES=arm64
+#            (liballnatives.a; use iphonesimulator and "arm64;x86_64" for the simulator)
+
+# On a Mac building for the Mac, build both architectures at once. Set
+# before project() so FreeType (added below) is built for both too.
+if (CMAKE_HOST_APPLE AND NOT CMAKE_SYSTEM_NAME AND NOT CMAKE_TOOLCHAIN_FILE AND NOT CMAKE_OSX_ARCHITECTURES)
     set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "" FORCE)
 endif()
 if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -14,8 +22,13 @@ project(QuorumNatives VERSION 2.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+if (CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    set(QUORUM_IOS ON)
+endif()
+
 # JNI headers only. jni.h and jni_md.h are the same for both Mac
-# architectures, so any JDK works; Quorum Studio's is the default.
+# architectures and for iOS, so any Mac JDK works; Quorum Studio's is the
+# default. Windows needs a Windows JDK's headers, which AutoBuild downloads.
 if (APPLE)
     set(QUORUM_JDK "/Applications/QuorumStudio.app/Contents/MacOS/Java/jdk/Contents/Home" CACHE PATH "JDK whose headers are used")
     set(JNI_PLATFORM darwin)
@@ -46,13 +59,25 @@ if (FREETYPE_CMAKE MATCHES "allnativesv2")
 endif()
 add_subdirectory(download/freetype EXCLUDE_FROM_ALL)
 
-add_library(GameEngineCPlugins MODULE
+set(NATIVE_SOURCES
     src/main/cpp/BufferUtils.cpp
     src/main/cpp/gdx2d.c
     src/main/cpp/Matrix4.cpp
     src/main/cpp/PixelMap.cpp
     src/main/cpp/FreeTypeStrategy.c
 )
+
+if (QUORUM_IOS)
+    # iOS apps link natives statically: one archive with the natives, the
+    # iOS graphics and audio code (ObjectAL), and FreeType.
+    enable_language(OBJC)
+    file(GLOB_RECURSE IOS_SOURCES CONFIGURE_DEPENDS
+        src/ios/*.cpp src/ios/*.m src/ios/*.c)
+    add_library(GameEngineCPlugins STATIC ${NATIVE_SOURCES} ${IOS_SOURCES})
+else()
+    add_library(GameEngineCPlugins MODULE ${NATIVE_SOURCES})
+endif()
+
 target_compile_definitions(GameEngineCPlugins PRIVATE FT2_BUILD_LIBRARY)
 target_include_directories(GameEngineCPlugins PRIVATE
     "${QUORUM_JDK}/include"
@@ -60,12 +85,25 @@ target_include_directories(GameEngineCPlugins PRIVATE
 target_link_libraries(GameEngineCPlugins PRIVATE freetype)
 target_compile_options(GameEngineCPlugins PRIVATE -O2)
 
-# The names Game.java loads: libGameEngineCPlugins.so on Mac,
-# libGameEngineCPlugins64.dll on Windows.
-if (APPLE)
+# The names Quorum loads: libGameEngineCPlugins.so on Mac,
+# libGameEngineCPlugins64.dll on Windows, and liballnatives.a on iOS.
+if (QUORUM_IOS)
+    # A static library doesn't include the libraries it links to, so
+    # FreeType's objects are merged into the final archive.
+    add_dependencies(GameEngineCPlugins freetype)
+    add_custom_command(TARGET GameEngineCPlugins POST_BUILD
+        COMMAND libtool -static -o "${CMAKE_BINARY_DIR}/liballnatives.a"
+                "$<TARGET_FILE:GameEngineCPlugins>" "$<TARGET_FILE:freetype>"
+        COMMENT "Merging FreeType into liballnatives.a")
+elseif (APPLE)
     set_target_properties(GameEngineCPlugins PROPERTIES PREFIX "lib" SUFFIX ".so")
 elseif (WIN32)
     set_target_properties(GameEngineCPlugins PROPERTIES PREFIX "lib" OUTPUT_NAME "GameEngineCPlugins64")
+    if (MINGW)
+        # Put the GCC runtime inside the DLL, so it doesn't need
+        # libgcc, libstdc++ or libwinpthread DLLs next to it.
+        target_link_options(GameEngineCPlugins PRIVATE -static -static-libgcc -static-libstdc++)
+    endif()
 endif()
 
 # Image loader tests: decode files and check formats, no JNI or Java needed.

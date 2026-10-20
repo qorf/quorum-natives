@@ -10,6 +10,29 @@ the iOS `CMakeLists.txt` from an older run: the script deletes it so it is
 extracted again, and CMake stops with a clear message. Changes 4 (README)
 and 5 (tests) are not applied.
 
+**Later the same day: all platforms from a Mac.** One AutoBuild run on a
+Mac now builds Mac, Windows and iOS (`buildMac`, `buildWindows` and
+`buildIOS`), each into its own folder under `build/`, and copies the results
+into the standard library. The details:
+- **iOS** builds from the root `CMakeLists.txt` (`CMAKE_SYSTEM_NAME=iOS`),
+  with FreeType merged into `liballnatives.a` by `libtool`. That replaces
+  `ios/CMakeLists.txt`, `toolchains/iOS.cmake`, the `freetype-ios` copy and
+  `xcodebuild`, which are now unused. Output: `ios.a` (arm64) and
+  `iosSimulator.a` (arm64, x86_64). Every JNI function in the shipped
+  `ios.a` is still there.
+- **Windows** is cross-compiled with MinGW-w64
+  (`toolchains/mingw-w64.cmake`) into `libGameEngineCPlugins64.dll`, with
+  the GCC runtime linked in. It has not been built here yet (MinGW isn't
+  installed) and must be tested on Windows.
+- **Tools:** the script finds Homebrew and installs CMake and MinGW-w64
+  with it if they're missing. It can't install Homebrew or the Xcode
+  command line tools, since both need an administrator password, so it
+  prints how to install them. iOS also needs the full Xcode.
+- **The CMake minimum is now 3.18,** because the MinGW toolchain file uses
+  `find_program(... REQUIRED)`.
+
+The sections below describe the first, Mac-only step.
+
 Status: the CMake part below was **built and checked** on this machine
 (2026-10-20, CMake 4.4.3, Xcode clang, Apple Silicon). The Quorum part is
 written against the current `Process`, `File` and `Properties` libraries

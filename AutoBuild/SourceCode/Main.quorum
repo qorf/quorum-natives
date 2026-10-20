@@ -16,19 +16,26 @@ use Libraries.System.Properties
     ways and this system mitigates at least some of that complexity through auto-downloading dependencies and other
     components. Each platform's requirements will be described here so we do not forget how each of them work:
 
+    On a Mac, one run builds the Mac, Windows and iOS natives (see buildMac, buildWindows and buildIOS) with the
+    CMakeLists.txt in the root folder, each in its own folder under build, and copies them into the standard library.
+    Homebrew is used to install CMake and MinGW-w64 if they are missing. Homebrew itself, and the Xcode command
+    line tools, must be installed by hand, since both ask for an administrator password.
+
     Windows:
+
+    On a Mac, the DLL is cross-compiled with MinGW-w64 (toolchains/mingw-w64.cmake), using the downloaded Windows JDK's
+    JNI headers. It can't be run on a Mac, so test it on Windows. On Windows itself, DoWindows is the older route.
 
     Mac:
 
-    One CMake build (CMakeLists.txt in the root folder) compiles FreeType and the natives for both arm64 and x86_64.
-    lipo then splits the result into the two files Game.java loads, libGameEngineCPluginsArm.so and libGameEngineCPlugins.so,
-    which are copied into the standard library. Needs CMake 3.16 or newer and the Xcode command line tools.
+    One CMake build compiles FreeType and the natives for both arm64 and x86_64. lipo then splits the result into the
+    two files Game.java loads, libGameEngineCPluginsArm.so and libGameEngineCPlugins.so.
 
     iOS:
 
-    For iOS, a CMake file is copied into the download/freetype folder and executed. This generates an xcode project, which we then call with xcodebuild.
-    Once this is completed, two files are generated, one for a simulator and another for a physical phone. As the simulator does not need any extra
-    requirements, only the apple physical device requirements will be additionally discussed here.
+    Two CMake builds (CMAKE_SYSTEM_NAME=iOS) make liballnatives.a for phones (arm64) and for the simulator (arm64 and
+    x86_64). Each has the natives, src/ios, and FreeType merged in. They are copied to Native/mobile as ios.a and
+    iosSimulator.a. Needs the full Xcode for the iOS SDK. Running and signing apps is described below.
 
     Running from Gradle on a simulator:
 
@@ -80,56 +87,54 @@ use Libraries.System.Properties
     ./gradlew -Dorg.gradle.java.home="/Applications/QuorumStudio.app/Contents/MacOS/Java/jdk/Contents/Home" ios:launchIOSDevice -Probovm.device.name="Andy’s iPhone" --stacktrace
 */
 class Main is NetworkRequestListener, ProcessListener
-    constant text DOWNLOADS = "../download" 
-    constant text IOS_FOLDER = "../ios" 
-    constant text IOS_NAME = "ios.a"
-    constant text IOS_SIMULATOR_NAME = "iosSimulator.a"
-    constant text CMAKE_LISTS = "CMakeLists.txt" 
-    constant text MAC_JDK_X86 = "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz"
-    constant text MAC_JDK_X86_NAME = "OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz"
+    constant text DOWNLOADS = "../download"
+    constant text CMAKE_LISTS = "CMakeLists.txt"
     constant text WINDOWS_JDK = "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_x64_windows_hotspot_11.0.15_10.zip"
     constant text WINDOWS_JDK_NAME = "OpenJDK11U-jdk_x64_windows_hotspot_11.0.15_10.zip"
     constant text EMSCRIPTEN_REPO_SOURCE = "https://github.com/emscripten-core/emsdk.git"
     constant text EMSCRIPTEN_REPO_FOLDER = "emsdk"
     constant text FREETYPE = "https://download.savannah.gnu.org/releases/freetype/freetype-2.13.0.tar.gz"
     constant text FREETYPE_NAME = "freetype-2.13.0.tar.gz"
-    constant text FREETYPE_IOS_FOLDER = "/freetype-ios"
 
-    constant text MAC_BUILD_FOLDER = "../build/mac"
     constant text MAC_ARM_NAME = "libGameEngineCPluginsArm.so"
     constant text MAC_X86_NAME = "libGameEngineCPlugins.so"
+    constant text WINDOWS_NAME = "libGameEngineCPlugins64.dll"
+    constant text IOS_NAME = "ios.a"
+    constant text IOS_SIMULATOR_NAME = "iosSimulator.a"
 
     // Where the finished libraries go. Relative to AutoBuild, assuming
     // quorum-natives and quorum-language are in the same folder.
-    constant text STANDARD_LIBRARY_GAME_NATIVES = "../../quorum-language/Quorum/Library/Standard/Native/Libraries.Game"
+    constant text STANDARD_LIBRARY_NATIVE = "../../quorum-language/Quorum/Library/Standard/Native"
+    constant text DESKTOP_FOLDER = "/Libraries.Game"
+    constant text MOBILE_FOLDER = "/mobile"
     boolean copyToStandardLibrary = true
+
+    // Which platforms a run on a Mac builds. Windows is cross-compiled
+    // with MinGW-w64, and iOS needs the full Xcode, not only its command line tools.
+    boolean buildMac = true
+    boolean buildWindows = true
+    boolean buildIOS = true
+    text iosVersion = "14.0"
+
+    // If true, attempt to build the web natives using Emscripten. Only tested on Windows side, currently.
+    boolean buildWebNatives = false
+
+    boolean verbose = false
+
+    number percent = 0
+    boolean displayPercent = true
 
     // Set by the ProcessListener actions. Process:Run waits until the
     // process ends and its last output and ProcessStopped have arrived.
     integer lastExit = -1
     Array<text> lastOutput
 
-    boolean verbose = false    
+    // The tools found or installed for this run, or "" if missing.
+    text brew = ""
+    text cmake = ""
 
-    number percent = 0
-    boolean displayPercent = true
-
-    /*
-        I'm confident there is a better way to do this in cmake, but 
-        as of now, how to get freetype to play nice as a library
-        inside of separate projects is not clear. As such, 
-        for now copy in a separate cmakelists file into freetype
-        and build the library as one complete package.
-
-        This approach is not ideal, largely because it is messy, but it does
-        appear to work.
-    */
-    boolean buildIOS = false
-    boolean isIOSSimulator = false
-    text iosVersion = "14.0"
-
-    // If true, attempt to build the web natives using Emscripten. Only tested on Windows side, currently.
-    boolean buildWebNatives = false
+    // One line per platform, printed at the end.
+    Array<text> summary
 
     action Main
         Properties prop
@@ -138,33 +143,34 @@ class Main is NetworkRequestListener, ProcessListener
         RemoveIOSFreeType()
         Deflate(FREETYPE_NAME, DOWNLOADS + "/freetype-2.13.0", DOWNLOADS + "/freetype")
 
-        if prop:IsMac() and buildIOS
-            // iOS keeps its own copy of FreeType, since it replaces FreeType's CMakeLists.txt,
-            // and its CMakeLists.txt reads the JNI headers from the x64 Mac JDK.
-            Deflate(FREETYPE_NAME, DOWNLOADS + "/freetype-2.13.0", DOWNLOADS + FREETYPE_IOS_FOLDER)
-            output "Downloading the Mac JDK"
-            Download(MAC_JDK_X86, MAC_JDK_X86_NAME)
-            Deflate(MAC_JDK_X86_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/mac/x64/jdk-11.0.15+10")
-        end
-
-        if prop:IsWindows()
+        // The Windows natives need a Windows JDK's JNI headers, even when
+        // they are cross-compiled on a Mac.
+        if prop:IsWindows() or (prop:IsMac() and buildWindows)
             output "Downloading the Windows JDK"
             Download(WINDOWS_JDK, WINDOWS_JDK_NAME)
             Deflate(WINDOWS_JDK_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/windows/x64/jdk-11.0.15+10")
-            if buildWebNatives
-                output "Checking for Emscripten repository..."
-                Clone(EMSCRIPTEN_REPO_SOURCE, EMSCRIPTEN_REPO_FOLDER)
-                ActivateEmscripten()
-            end
+        end
+
+        if prop:IsWindows() and buildWebNatives
+            output "Checking for Emscripten repository..."
+            Clone(EMSCRIPTEN_REPO_SOURCE, EMSCRIPTEN_REPO_FOLDER)
+            ActivateEmscripten()
         end
 
         DoPlatformBuild()
+
+        output ""
+        i = 0
+        repeat while i < summary:GetSize()
+            output summary:Get(i)
+            i = i + 1
+        end
         output "Done"
     end
 
     /*
-        iOS builds used to copy their CMakeLists.txt over FreeType's own in
-        download/freetype. The Mac build needs FreeType's file, so if the iOS
+        Older iOS builds copied their CMakeLists.txt over FreeType's own in
+        download/freetype. The builds need FreeType's file, so if the iOS
         one is there, delete the folder and it is extracted again.
     */
     action RemoveIOSFreeType
@@ -183,168 +189,19 @@ class Main is NetworkRequestListener, ProcessListener
 
     action DoPlatformBuild
         Properties prop
-        if prop:IsMac() and buildIOS
-            DoIOS()
-        elseif prop:IsMac() or prop:IsWindows()
-            DoDesktop()
-        end
-    end
-
-    /*
-        On IOS, you have to do something special. As far as I can tell, the way we can get it to 
-        work is to generate a cmakelists.txt file specifically for freetype on ios, which then gets
-        sent into its own copy of freetype in downloads (freetype-ios). Inside this, we have to embed our special requirements
-        for the library as a whole, which means this will break as freetype changes. 
-
-        From there, we have to execute two commands as processes, which look sort of like this:
-
-        executed from the ios folder
-
-        cmake -G Xcode ../download/freetype-ios/CMakeLists.txt -DCMAKE_TOOLCHAIN_FILE=../toolchains/IOS.cmake -B.
-
-        xcodebuild -project allnativesv2.xcodeproj -target ALL_BUILD -sdk iphonesimulator -destination platform=iOS Simulator,id=SOME_KEY,OS=16.2
-    
-        If it works, in the ios folder, it will make a folder that looks something like Debug-iphonesimulator. Inside
-        of that will be a file called liballnatives.a, which is the file we need for the system in question. Overall,
-        this whole process is pretty ugly, but at least for now it seems to solve the problem.
-
-    */
-    action DoIOS
-        //first copy the special cmake file to the freetype folder
-        CopyIOSCMakeToFreeType()
-
-        //now run cmake from the ios folder
-        CMakeFreetypeIOS()
-
-        //now use xcodebuild to build the file
-        BuildFreetypeIOS(true)
-
-        //now compile it for iOS in general
-        BuildFreetypeIOS(false)
-
-        //now copy the files
-        CopyIOSToReleaseFolder()
-    end
-
-    action CopyIOSToReleaseFolder
-        output "Copying CMakeLists.txt to freetype"
-        File from
-        from:SetPath(IOS_FOLDER + "/Release-iphonesimulator/liballnatives.a")
-
-        File to
-        to:SetPath(IOS_FOLDER + "/releases")
-        if not to:Exists()
-            to:CreateDirectory()
-        end
-
-        to:SetPath(IOS_FOLDER + "/releases/" + IOS_SIMULATOR_NAME)
-        from:Copy(to)
-
-        from:SetPath(IOS_FOLDER + "/Release-iphoneos/liballnatives.a")
-        to:SetPath(IOS_FOLDER + "/releases/" + IOS_NAME)
-        from:Copy(to)
-    end
-
-    /*
-        cmake -G Xcode ../download/freetype-ios/CMakeLists.txt -DCMAKE_TOOLCHAIN_FILE=../toolchains/IOS.cmake -B.
-    */
-    action CMakeFreetypeIOS
-        File downloads
-        downloads:SetPath(IOS_FOLDER)
-        output "Running CMake for IOS from folder"
-        output downloads:GetAbsolutePath()
-        //first run the untar commands
-        text cmake = FindCMake()
-        if cmake = ""
-            output "CMake was not found. Install it (brew install cmake, or CMake.app from cmake.org) and run again."
-            return now
-        end
-        Process process
-        process:SetDirectory(downloads)
-        process:SetName(cmake)
-        Array<text> params
-        params:Add("-G")
-        params:Add("Xcode")
-        params:Add("../download/freetype-ios/CMakeLists.txt")
-        params:Add("-DCMAKE_TOOLCHAIN_FILE=../toolchains/IOS.cmake ")
-        params:Add("-B.")
-        process:AddListener(me)
-
-        process:SetParameters(params)
-        process:Run()
-    end
-
-    /*
-        Versions of the SDK available on the machine are available with: xcodebuild -showsdks
-
-        xcodebuild -project allnativesv2.xcodeproj -target ALL_BUILD -sdk iphonesimulator -destination platform=iOS Simulator,id=SOME_KEY,OS=16.2
-    */
-    action BuildFreetypeIOS(boolean simulator)
-        File downloads
-        downloads:SetPath(IOS_FOLDER)
-        output "Building IOS"
-        output downloads:GetAbsolutePath()
-        //first run the untar commands
-        Process process
-        process:SetDirectory(downloads)
-        process:SetName("xcodebuild")
-        Array<text> params
-        params:Add("-project")
-        params:Add("allnativesv2.xcodeproj")
-        params:Add("-target")
-        params:Add("ALL_BUILD")
-        params:Add("-sdk")
-        if simulator
-            params:Add("iphonesimulator")
-        else
-            params:Add("iphoneos")
-        end
-        params:Add("-configuration")
-        params:Add("Release")
-        //params:Add("-destination")
-        //params:Add("platform=iOS Simulator,OS=14.0")
-        process:AddListener(me)
-
-        process:SetParameters(params)
-        process:Run()
-    end
-
-    action CopyIOSCMakeToFreeType
-        output "Copying CMakeLists.txt to freetype"
-        File from
-        from:SetPath(IOS_FOLDER + "/" + CMAKE_LISTS)
-
-        File to
-        to:SetPath(DOWNLOADS + FREETYPE_IOS_FOLDER + "/" + CMAKE_LISTS)
-
-        from:Copy(to)
-    end
-
-    /*
-        On Mac, one CMake build compiles FreeType and the natives together. On Windows,
-        the configure script compiles freetype, and the broader cmake file in the root
-        part of the package builds the natives.
-    */
-    action DoDesktop
-        Properties prop
         if prop:IsMac()
-            DoMac()
+            DoMacHost()
         elseif prop:IsWindows()
             DoWindows()
         end
     end
 
     /*
-        Builds both Mac libraries in one CMake build (FreeType included),
-        splits them by architecture, and copies them to the standard library.
+        On a Mac, every platform is built with the same CMakeLists.txt, each
+        in its own folder under build. A platform that fails doesn't stop the
+        others; the summary at the end says what happened to each.
     */
-    action DoMac
-        text cmake = FindCMake()
-        if cmake = ""
-            output "CMake was not found. Install it (brew install cmake, or CMake.app from cmake.org) and run again."
-            return now
-        end
-
+    action DoMacHost
         File root
         root:SetPath("..")
 
@@ -352,50 +209,72 @@ class Main is NetworkRequestListener, ProcessListener
         parameters:Add("-p")
         if not RunStep("Checking the Xcode command line tools", "xcode-select", parameters, root)
             output "Install them with: xcode-select --install"
+            summary:Add("Nothing built: the Xcode command line tools are missing.")
             return now
         end
 
-        parameters:Empty()
-        parameters:Add("-S")
-        parameters:Add(".")
-        parameters:Add("-B")
-        parameters:Add("build/mac")
-        parameters:Add("-DCMAKE_BUILD_TYPE=Release")
-        parameters:Add("-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64")
-        if not RunStep("Configuring (CMake)", cmake, parameters, root)
+        brew = FindBrew()
+        cmake = FindTool("cmake", "cmake")
+        if cmake = ""
+            summary:Add("Nothing built: CMake is missing.")
             return now
         end
 
-        parameters:Empty()
-        parameters:Add("--build")
-        parameters:Add("build/mac")
-        parameters:Add("--parallel")
-        if not RunStep("Building FreeType and the natives (the first build takes a minute)", cmake, parameters, root)
-            return now
+        if buildMac
+            if DoMac()
+                summary:Add("Mac: built")
+            else
+                summary:Add("Mac: FAILED (see above)")
+            end
         end
-
-        if not Thin("arm64", MAC_ARM_NAME)
-            return now
+        if buildWindows
+            if DoWindowsOnMac()
+                summary:Add("Windows: built (test it on Windows before shipping)")
+            else
+                summary:Add("Windows: FAILED (see above)")
+            end
         end
-        if not Thin("x86_64", MAC_X86_NAME)
-            return now
+        if buildIOS
+            if DoIOS()
+                summary:Add("iOS: built")
+            else
+                summary:Add("iOS: FAILED (see above)")
+            end
         end
-
-        if copyToStandardLibrary
-            CopyToStandardLibrary(MAC_ARM_NAME)
-            CopyToStandardLibrary(MAC_X86_NAME)
-        end
-        output "Mac natives built: " + MAC_BUILD_FOLDER + "/thin"
     end
 
-    /* Makes a one-architecture copy of the universal library. */
-    action Thin(text architecture, text name) returns boolean
+    /*
+        Builds both Mac architectures in one CMake build (FreeType included),
+        splits them into the two files Game.java loads, and copies them to the
+        standard library.
+    */
+    action DoMac returns boolean
+        output "=== Mac ==="
+        Array<text> options
+        options:Add("-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64")
+        if not BuildWithCMake("build/mac", options)
+            return false
+        end
+
         File thinFolder
-        thinFolder:SetPath(MAC_BUILD_FOLDER + "/thin")
+        thinFolder:SetPath("../build/mac/thin")
         if not thinFolder:Exists()
             thinFolder:CreateDirectories()
         end
+        if not Thin("arm64", MAC_ARM_NAME)
+            return false
+        end
+        if not Thin("x86_64", MAC_X86_NAME)
+            return false
+        end
 
+        CopyToStandardLibrary("../build/mac/thin/" + MAC_ARM_NAME, DESKTOP_FOLDER, MAC_ARM_NAME)
+        CopyToStandardLibrary("../build/mac/thin/" + MAC_X86_NAME, DESKTOP_FOLDER, MAC_X86_NAME)
+        return true
+    end
+
+    /* Makes a one-architecture copy of the universal Mac library. */
+    action Thin(text architecture, text name) returns boolean
         File root
         root:SetPath("..")
         Array<text> parameters
@@ -407,16 +286,115 @@ class Main is NetworkRequestListener, ProcessListener
         return RunStep("Making the " + architecture + " library", "lipo", parameters, root)
     end
 
-    action CopyToStandardLibrary(text name)
-        File from
-        from:SetPath(MAC_BUILD_FOLDER + "/thin/" + name)
-        File to
-        to:SetPath(STANDARD_LIBRARY_GAME_NATIVES + "/" + name)
-        File folder = to:GetParentDirectory()
-        if folder = undefined or not folder:Exists()
-            output "Standard library folder not found, skipping the copy: " + STANDARD_LIBRARY_GAME_NATIVES
+    /*
+        Cross-compiles the Windows DLL with MinGW-w64, installing it with
+        Homebrew if needed. The DLL can't be run on a Mac, so test it on
+        Windows before shipping it.
+    */
+    action DoWindowsOnMac returns boolean
+        output "=== Windows ==="
+        text compiler = FindTool("x86_64-w64-mingw32-gcc", "mingw-w64")
+        if compiler = ""
+            return false
+        end
+
+        File toolchain
+        toolchain:SetPath("../toolchains/mingw-w64.cmake")
+        Array<text> options
+        options:Add("-DCMAKE_TOOLCHAIN_FILE=" + toolchain:GetAbsolutePath())
+        if not BuildWithCMake("build/windows", options)
+            return false
+        end
+
+        CopyToStandardLibrary("../build/windows/" + WINDOWS_NAME, DESKTOP_FOLDER, WINDOWS_NAME)
+        return true
+    end
+
+    /*
+        Builds the two static libraries an iOS app links: arm64 for phones,
+        and arm64 plus x86_64 for the simulator. Each has the natives, the
+        iOS graphics and audio code, and FreeType.
+    */
+    action DoIOS returns boolean
+        output "=== iOS ==="
+        File root
+        root:SetPath("..")
+        Array<text> parameters
+        parameters:Add("--sdk")
+        parameters:Add("iphoneos")
+        parameters:Add("--show-sdk-path")
+        if not RunStep("Checking for the iOS SDK", "xcrun", parameters, root)
+            output "The iOS SDK comes with the full Xcode (from the App Store), not only the command line tools."
+            return false
+        end
+
+        Array<text> options
+        options:Add("-DCMAKE_SYSTEM_NAME=iOS")
+        options:Add("-DCMAKE_OSX_SYSROOT=iphoneos")
+        options:Add("-DCMAKE_OSX_ARCHITECTURES=arm64")
+        options:Add("-DCMAKE_OSX_DEPLOYMENT_TARGET=" + iosVersion)
+        if not BuildWithCMake("build/ios-device", options)
+            return false
+        end
+
+        options:Empty()
+        options:Add("-DCMAKE_SYSTEM_NAME=iOS")
+        options:Add("-DCMAKE_OSX_SYSROOT=iphonesimulator")
+        options:Add("-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64")
+        options:Add("-DCMAKE_OSX_DEPLOYMENT_TARGET=" + iosVersion)
+        if not BuildWithCMake("build/ios-simulator", options)
+            return false
+        end
+
+        CopyToStandardLibrary("../build/ios-device/liballnatives.a", MOBILE_FOLDER, IOS_NAME)
+        CopyToStandardLibrary("../build/ios-simulator/liballnatives.a", MOBILE_FOLDER, IOS_SIMULATOR_NAME)
+        return true
+    end
+
+    /*
+        Configures and builds the root CMakeLists.txt into a folder under
+        quorum-natives, with extra -D options for the platform.
+    */
+    action BuildWithCMake(text folder, Array<text> options) returns boolean
+        File root
+        root:SetPath("..")
+
+        Array<text> parameters
+        parameters:Add("-S")
+        parameters:Add(".")
+        parameters:Add("-B")
+        parameters:Add(folder)
+        parameters:Add("-DCMAKE_BUILD_TYPE=Release")
+        i = 0
+        repeat while i < options:GetSize()
+            parameters:Add(options:Get(i))
+            i = i + 1
+        end
+        if not RunStep("Configuring " + folder, cmake, parameters, root)
+            return false
+        end
+
+        parameters:Empty()
+        parameters:Add("--build")
+        parameters:Add(folder)
+        parameters:Add("--parallel")
+        return RunStep("Building " + folder + " (the first build takes a minute)", cmake, parameters, root)
+    end
+
+    action CopyToStandardLibrary(text fromPath, text folder, text name)
+        if not copyToStandardLibrary
             return now
         end
+        File from
+        from:SetPath(fromPath)
+        File destination
+        destination:SetPath(STANDARD_LIBRARY_NATIVE + folder)
+        if not destination:Exists()
+            output "Standard library folder not found, skipping the copy: " + STANDARD_LIBRARY_NATIVE + folder
+            return now
+        end
+        File to
+        to:SetPath(STANDARD_LIBRARY_NATIVE + folder + "/" + name)
         if from:Copy(to)
             output "Copied to " + to:GetAbsolutePath()
         else
@@ -425,20 +403,66 @@ class Main is NetworkRequestListener, ProcessListener
     end
 
     /*
-        Quorum Studio started from the Finder has a short PATH, so look in
-        the usual install places instead of relying on "cmake" by name.
+        Homebrew can't be installed from here, since its installer asks for
+        an administrator password. Returns its path, or "" if it's missing.
     */
-    action FindCMake returns text
-        Array<text> places
-        places:Add("/opt/homebrew/bin/cmake")
-        places:Add("/usr/local/bin/cmake")
-        places:Add("/Applications/CMake.app/Contents/bin/cmake")
+    action FindBrew returns text
+        text found = FindInUsualPlaces("brew")
+        if found = ""
+            output "Homebrew was not found, so missing tools can't be installed automatically."
+            output "Install it from https://brew.sh by running this in Terminal, then run AutoBuild again:"
+            text quote = ""
+            quote = quote:GetDoubleQuote()
+            output "    /bin/bash -c " + quote + "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" + quote
+        end
+        return found
+    end
+
+    /*
+        Finds a command-line tool, installing it with Homebrew if it's
+        missing and Homebrew is there. Returns its path, or "" if it can't
+        be found or installed.
+    */
+    action FindTool(text name, text brewPackage) returns text
+        text found = FindInUsualPlaces(name)
+        if found not= ""
+            return found
+        end
+        if brew = ""
+            output name + " was not found, and Homebrew isn't there to install it (brew install " + brewPackage + ")."
+            return ""
+        end
+
+        File root
+        root:SetPath("..")
+        Array<text> parameters
+        parameters:Add("install")
+        parameters:Add(brewPackage)
+        if not RunStep("Installing " + brewPackage + " with Homebrew (this can take a few minutes)", brew, parameters, root)
+            return ""
+        end
+        found = FindInUsualPlaces(name)
+        if found = ""
+            output brewPackage + " was installed, but " + name + " still wasn't found."
+        end
+        return found
+    end
+
+    /*
+        Quorum Studio started from the Finder has a short PATH, so tools are
+        looked for where Homebrew and CMake.app put them instead of by name.
+    */
+    action FindInUsualPlaces(text name) returns text
+        Array<text> folders
+        folders:Add("/opt/homebrew/bin/")
+        folders:Add("/usr/local/bin/")
+        folders:Add("/Applications/CMake.app/Contents/bin/")
         i = 0
-        repeat while i < places:GetSize()
+        repeat while i < folders:GetSize()
             File candidate
-            candidate:SetAbsolutePath(places:Get(i))
+            candidate:SetAbsolutePath(folders:Get(i) + name)
             if candidate:Exists()
-                return places:Get(i)
+                return folders:Get(i) + name
             end
             i = i + 1
         end
