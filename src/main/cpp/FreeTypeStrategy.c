@@ -139,6 +139,32 @@ JNIEXPORT jobject JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_Free
     return (*env)->NewDirectByteBuffer(env, glyph->bitmap.buffer, size);
 }
 
+JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy_GetFamily(JNIEnv * env, jobject jobj, jlong faceHandle)
+{
+    // The font's family name, such as "Times New Roman", or "" if unknown.
+    const char* name = "";
+    if (faceHandle != 0)
+    {
+        FT_Face *face = (FT_Face*)faceHandle;
+        if ((*face)->family_name != NULL)
+            name = (*face)->family_name;
+    }
+    return (*env)->NewStringUTF(env, name);
+}
+
+JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy_GetStyleName(JNIEnv * env, jobject jobj, jlong faceHandle)
+{
+    // The font's style, such as "Bold Italic", or "" if unknown.
+    const char* name = "";
+    if (faceHandle != 0)
+    {
+        FT_Face *face = (FT_Face*)faceHandle;
+        if ((*face)->style_name != NULL)
+            name = (*face)->style_name;
+    }
+    return (*env)->NewStringUTF(env, name);
+}
+
 JNIEXPORT jlong JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy_GetLineHeightNative(JNIEnv * env, jobject jobj, jlong faceHandle)
 {
     FT_Face *face = (FT_Face*)faceHandle; 

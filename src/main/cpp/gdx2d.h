@@ -66,7 +66,14 @@ typedef struct {
 	const unsigned char* pixels;
 } gdx2d_pixmap;
 
-JNIEXPORT gdx2d_pixmap* gdx2d_load (const unsigned char *buffer, uint32_t len);
+/**
+ * decodes a PNG, JPEG, BMP, TGA, GIF, PSD, HDR or PIC image. 16-bit images
+ * are reduced to 8 bits per channel. requestedChannels is 1 (alpha),
+ * 2 (luminance alpha), 3 (RGB888) or 4 (RGBA8888) to convert the image to
+ * that format, or 0 to keep the channels the file has. returns 0 on failure,
+ * see gdx2d_get_failure_reason.
+ */
+JNIEXPORT gdx2d_pixmap* gdx2d_load (const unsigned char *buffer, uint32_t len, uint32_t requestedChannels);
 JNIEXPORT gdx2d_pixmap* gdx2d_new  (uint32_t width, uint32_t height, uint32_t format);
 JNIEXPORT void 		 gdx2d_free (const gdx2d_pixmap* pixmap);
 

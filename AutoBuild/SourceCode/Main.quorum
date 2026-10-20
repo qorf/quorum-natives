@@ -20,6 +20,10 @@ use Libraries.System.Properties
 
     Mac:
 
+    One CMake build (CMakeLists.txt in the root folder) compiles FreeType and the natives for both arm64 and x86_64.
+    lipo then splits the result into the two files Game.java loads, libGameEngineCPluginsArm.so and libGameEngineCPlugins.so,
+    which are copied into the standard library. Needs CMake 3.16 or newer and the Xcode command line tools.
+
     iOS:
 
     For iOS, a CMake file is copied into the download/freetype folder and executed. This generates an xcode project, which we then call with xcodebuild.
@@ -81,8 +85,6 @@ class Main is NetworkRequestListener, ProcessListener
     constant text IOS_NAME = "ios.a"
     constant text IOS_SIMULATOR_NAME = "iosSimulator.a"
     constant text CMAKE_LISTS = "CMakeLists.txt" 
-    constant text MAC_JDK_ARM = "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_aarch64_mac_hotspot_11.0.15_10.tar.gz"
-    constant text MAC_JDK_ARM_NAME = "OpenJDK11U-jdk_aarch64_mac_hotspot_11.0.15_10.tar"
     constant text MAC_JDK_X86 = "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz"
     constant text MAC_JDK_X86_NAME = "OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz"
     constant text WINDOWS_JDK = "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_x64_windows_hotspot_11.0.15_10.zip"
@@ -91,11 +93,25 @@ class Main is NetworkRequestListener, ProcessListener
     constant text EMSCRIPTEN_REPO_FOLDER = "emsdk"
     constant text FREETYPE = "https://download.savannah.gnu.org/releases/freetype/freetype-2.13.0.tar.gz"
     constant text FREETYPE_NAME = "freetype-2.13.0.tar.gz"
+    constant text FREETYPE_IOS_FOLDER = "/freetype-ios"
+
+    constant text MAC_BUILD_FOLDER = "../build/mac"
+    constant text MAC_ARM_NAME = "libGameEngineCPluginsArm.so"
+    constant text MAC_X86_NAME = "libGameEngineCPlugins.so"
+
+    // Where the finished libraries go. Relative to AutoBuild, assuming
+    // quorum-natives and quorum-language are in the same folder.
+    constant text STANDARD_LIBRARY_GAME_NATIVES = "../../quorum-language/Quorum/Library/Standard/Native/Libraries.Game"
+    boolean copyToStandardLibrary = true
+
+    // Set by the ProcessListener actions. Process:Run waits until the
+    // process ends and its last output and ProcessStopped have arrived.
+    integer lastExit = -1
+    Array<text> lastOutput
 
     boolean verbose = false    
 
     number percent = 0
-    boolean arm = false
     boolean displayPercent = true
 
     /*
@@ -108,35 +124,61 @@ class Main is NetworkRequestListener, ProcessListener
         This approach is not ideal, largely because it is messy, but it does
         appear to work.
     */
-    boolean buildIOS = true
+    boolean buildIOS = false
     boolean isIOSSimulator = false
     text iosVersion = "14.0"
 
     // If true, attempt to build the web natives using Emscripten. Only tested on Windows side, currently.
-    boolean buildWebNatives = true
+    boolean buildWebNatives = false
 
     action Main
-        //first get all required files for all platforms
-        output "Downloading JDKs"
-        Download(MAC_JDK_ARM, MAC_JDK_ARM_NAME)
-        Download(MAC_JDK_X86, MAC_JDK_X86_NAME)
-        Download(WINDOWS_JDK, WINDOWS_JDK_NAME)
+        Properties prop
+        output "Downloading FreeType"
         Download(FREETYPE, FREETYPE_NAME)
-
-        output "Deflating"
-        Deflate(WINDOWS_JDK_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/windows/x64/jdk-11.0.15+10")
-        Deflate(MAC_JDK_X86_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/mac/x64/jdk-11.0.15+10")
-        Deflate(MAC_JDK_ARM_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/mac/aarch64/jdk-11.0.15+10")
+        RemoveIOSFreeType()
         Deflate(FREETYPE_NAME, DOWNLOADS + "/freetype-2.13.0", DOWNLOADS + "/freetype")
-    
-        if buildWebNatives
-            output "Checking for Emscripten repository..."
-            Clone(EMSCRIPTEN_REPO_SOURCE, EMSCRIPTEN_REPO_FOLDER)
-            ActivateEmscripten()
+
+        if prop:IsMac() and buildIOS
+            // iOS keeps its own copy of FreeType, since it replaces FreeType's CMakeLists.txt,
+            // and its CMakeLists.txt reads the JNI headers from the x64 Mac JDK.
+            Deflate(FREETYPE_NAME, DOWNLOADS + "/freetype-2.13.0", DOWNLOADS + FREETYPE_IOS_FOLDER)
+            output "Downloading the Mac JDK"
+            Download(MAC_JDK_X86, MAC_JDK_X86_NAME)
+            Deflate(MAC_JDK_X86_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/mac/x64/jdk-11.0.15+10")
+        end
+
+        if prop:IsWindows()
+            output "Downloading the Windows JDK"
+            Download(WINDOWS_JDK, WINDOWS_JDK_NAME)
+            Deflate(WINDOWS_JDK_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/windows/x64/jdk-11.0.15+10")
+            if buildWebNatives
+                output "Checking for Emscripten repository..."
+                Clone(EMSCRIPTEN_REPO_SOURCE, EMSCRIPTEN_REPO_FOLDER)
+                ActivateEmscripten()
+            end
         end
 
         DoPlatformBuild()
         output "Done"
+    end
+
+    /*
+        iOS builds used to copy their CMakeLists.txt over FreeType's own in
+        download/freetype. The Mac build needs FreeType's file, so if the iOS
+        one is there, delete the folder and it is extracted again.
+    */
+    action RemoveIOSFreeType
+        File freetypeCMake
+        freetypeCMake:SetPath(DOWNLOADS + "/freetype/" + CMAKE_LISTS)
+        if freetypeCMake:Exists()
+            text contents = freetypeCMake:Read()
+            if contents:Contains("allnativesv2")
+                output "download/freetype has the iOS CMakeLists.txt, so FreeType will be extracted again."
+                File oldFreeType
+                oldFreeType:SetPath(DOWNLOADS + "/freetype")
+                oldFreeType:Delete(true)
+            end
+        end
     end
 
     action DoPlatformBuild
@@ -151,14 +193,14 @@ class Main is NetworkRequestListener, ProcessListener
     /*
         On IOS, you have to do something special. As far as I can tell, the way we can get it to 
         work is to generate a cmakelists.txt file specifically for freetype on ios, which then gets
-        sent into the main freetype folder in downloads. Inside this, we have to embed our special requirements
+        sent into its own copy of freetype in downloads (freetype-ios). Inside this, we have to embed our special requirements
         for the library as a whole, which means this will break as freetype changes. 
 
         From there, we have to execute two commands as processes, which look sort of like this:
 
         executed from the ios folder
 
-        cmake -G Xcode ../download/freetype/CMakeLists.txt -DCMAKE_TOOLCHAIN_FILE=../toolchains/IOS.cmake -B.
+        cmake -G Xcode ../download/freetype-ios/CMakeLists.txt -DCMAKE_TOOLCHAIN_FILE=../toolchains/IOS.cmake -B.
 
         xcodebuild -project allnativesv2.xcodeproj -target ALL_BUILD -sdk iphonesimulator -destination platform=iOS Simulator,id=SOME_KEY,OS=16.2
     
@@ -204,7 +246,7 @@ class Main is NetworkRequestListener, ProcessListener
     end
 
     /*
-        cmake -G Xcode ../download/freetype/CMakeLists.txt -DCMAKE_TOOLCHAIN_FILE=../toolchains/IOS.cmake -B.
+        cmake -G Xcode ../download/freetype-ios/CMakeLists.txt -DCMAKE_TOOLCHAIN_FILE=../toolchains/IOS.cmake -B.
     */
     action CMakeFreetypeIOS
         File downloads
@@ -212,13 +254,18 @@ class Main is NetworkRequestListener, ProcessListener
         output "Running CMake for IOS from folder"
         output downloads:GetAbsolutePath()
         //first run the untar commands
+        text cmake = FindCMake()
+        if cmake = ""
+            output "CMake was not found. Install it (brew install cmake, or CMake.app from cmake.org) and run again."
+            return now
+        end
         Process process
         process:SetDirectory(downloads)
-        process:SetName("/usr/local/bin/cmake")
+        process:SetName(cmake)
         Array<text> params
         params:Add("-G")
         params:Add("Xcode")
-        params:Add("../download/freetype/CMakeLists.txt")
+        params:Add("../download/freetype-ios/CMakeLists.txt")
         params:Add("-DCMAKE_TOOLCHAIN_FILE=../toolchains/IOS.cmake ")
         params:Add("-B.")
         process:AddListener(me)
@@ -268,15 +315,15 @@ class Main is NetworkRequestListener, ProcessListener
         from:SetPath(IOS_FOLDER + "/" + CMAKE_LISTS)
 
         File to
-        to:SetPath(DOWNLOADS + "/freetype/" + CMAKE_LISTS)
+        to:SetPath(DOWNLOADS + FREETYPE_IOS_FOLDER + "/" + CMAKE_LISTS)
 
         from:Copy(to)
     end
 
     /*
-        On Desktop, we can use the configure script to compile freetype 
-        and then bundle it into our existing values by running the broader cmake file
-        in the root part of the package.
+        On Mac, one CMake build compiles FreeType and the natives together. On Windows,
+        the configure script compiles freetype, and the broader cmake file in the root
+        part of the package builds the natives.
     */
     action DoDesktop
         Properties prop
@@ -287,26 +334,153 @@ class Main is NetworkRequestListener, ProcessListener
         end
     end
 
+    /*
+        Builds both Mac libraries in one CMake build (FreeType included),
+        splits them by architecture, and copies them to the standard library.
+    */
     action DoMac
-        if arm
-            output "Configuring Freetype for ARM"
-        else
-            output "Configuring Freetype for x64"
+        text cmake = FindCMake()
+        if cmake = ""
+            output "CMake was not found. Install it (brew install cmake, or CMake.app from cmake.org) and run again."
+            return now
         end
-        ConfigureFreetype()
-        output "Cleaning"
-        //CleanFreetype()
-        output "Building Freetype"
-        BuildFreetype()
 
-        output "Copying Library"
-        //Now move the freetype file out
-        if arm
-            CopyFreeTypeLibrary("/freetype/FreeType_Release/freetype_Arm.a")
-        else
-            CopyFreeTypeLibrary("/freetype/FreeType_Release/freetype_x86_64.a")
+        File root
+        root:SetPath("..")
+
+        Array<text> parameters
+        parameters:Add("-p")
+        if not RunStep("Checking the Xcode command line tools", "xcode-select", parameters, root)
+            output "Install them with: xcode-select --install"
+            return now
         end
-        output "Building Complete."
+
+        parameters:Empty()
+        parameters:Add("-S")
+        parameters:Add(".")
+        parameters:Add("-B")
+        parameters:Add("build/mac")
+        parameters:Add("-DCMAKE_BUILD_TYPE=Release")
+        parameters:Add("-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64")
+        if not RunStep("Configuring (CMake)", cmake, parameters, root)
+            return now
+        end
+
+        parameters:Empty()
+        parameters:Add("--build")
+        parameters:Add("build/mac")
+        parameters:Add("--parallel")
+        if not RunStep("Building FreeType and the natives (the first build takes a minute)", cmake, parameters, root)
+            return now
+        end
+
+        if not Thin("arm64", MAC_ARM_NAME)
+            return now
+        end
+        if not Thin("x86_64", MAC_X86_NAME)
+            return now
+        end
+
+        if copyToStandardLibrary
+            CopyToStandardLibrary(MAC_ARM_NAME)
+            CopyToStandardLibrary(MAC_X86_NAME)
+        end
+        output "Mac natives built: " + MAC_BUILD_FOLDER + "/thin"
+    end
+
+    /* Makes a one-architecture copy of the universal library. */
+    action Thin(text architecture, text name) returns boolean
+        File thinFolder
+        thinFolder:SetPath(MAC_BUILD_FOLDER + "/thin")
+        if not thinFolder:Exists()
+            thinFolder:CreateDirectories()
+        end
+
+        File root
+        root:SetPath("..")
+        Array<text> parameters
+        parameters:Add("build/mac/libGameEngineCPlugins.so")
+        parameters:Add("-thin")
+        parameters:Add(architecture)
+        parameters:Add("-output")
+        parameters:Add("build/mac/thin/" + name)
+        return RunStep("Making the " + architecture + " library", "lipo", parameters, root)
+    end
+
+    action CopyToStandardLibrary(text name)
+        File from
+        from:SetPath(MAC_BUILD_FOLDER + "/thin/" + name)
+        File to
+        to:SetPath(STANDARD_LIBRARY_GAME_NATIVES + "/" + name)
+        File folder = to:GetParentDirectory()
+        if folder = undefined or not folder:Exists()
+            output "Standard library folder not found, skipping the copy: " + STANDARD_LIBRARY_GAME_NATIVES
+            return now
+        end
+        if from:Copy(to)
+            output "Copied to " + to:GetAbsolutePath()
+        else
+            output "Could not copy to " + to:GetAbsolutePath()
+        end
+    end
+
+    /*
+        Quorum Studio started from the Finder has a short PATH, so look in
+        the usual install places instead of relying on "cmake" by name.
+    */
+    action FindCMake returns text
+        Array<text> places
+        places:Add("/opt/homebrew/bin/cmake")
+        places:Add("/usr/local/bin/cmake")
+        places:Add("/Applications/CMake.app/Contents/bin/cmake")
+        i = 0
+        repeat while i < places:GetSize()
+            File candidate
+            candidate:SetAbsolutePath(places:Get(i))
+            if candidate:Exists()
+                return places:Get(i)
+            end
+            i = i + 1
+        end
+        return ""
+    end
+
+    /*
+        Runs a program and waits for it. Returns true if it exited with 0.
+        On failure, prints the last lines it wrote so the cause is visible
+        even when verbose is false.
+    */
+    action RunStep(text description, text program, Array<text> parameters, File folder) returns boolean
+        output description
+        lastExit = -1
+        lastOutput:Empty()
+
+        Process process
+        process:SetDirectory(folder)
+        process:SetName(program)
+        process:SetParameters(parameters)
+        process:AddListener(me)
+        check
+            process:Run()
+        detect e
+            output "Could not start " + program + ": " + e:GetErrorMessage()
+            return false
+        end
+
+        if lastExit not= 0
+            output description + " failed (exit code " + lastExit + "). Last output:"
+            integer start = lastOutput:GetSize() - 40
+            if start < 0
+                start = 0
+            end
+            i = start
+            repeat while i < lastOutput:GetSize()
+                output "    " + lastOutput:Get(i)
+                i = i + 1
+            end
+            return false
+        end
+        return true
     end
 
     action DoWindows
@@ -319,30 +493,13 @@ class Main is NetworkRequestListener, ProcessListener
 
         output "Copying Library"
         //Now move the freetype file out
-        //CopyFreeTypeLibrary("/freetype/libfreetype.a")
 
         output "Building Complete."
-    end
-
-    action CopyFreeTypeLibrary(text location)
-        //download/freetype/objs/.libs
-        File from
-        from:SetPath(DOWNLOADS + "/freetype/objs/.libs/libfreetype.a")
-
-        File to
-        to:SetPath(DOWNLOADS + location)
-        File mom = to:GetParentDirectory()
-        if mom not= undefined and not mom:Exists()
-            mom:CreateDirectories()
-        end
-        from:Copy(to)
     end
 
     action ConfigureFreetype
         //./configure --without-zlib --without-png --without-bzip2
 
-        //on M1 processors
-        //./configure --without-zlib --without-png --without-bzip2 -target arm64-apple-macos
         File downloads
         downloads:SetPath(DOWNLOADS + "/freetype")
         //first run the untar commands
@@ -353,10 +510,6 @@ class Main is NetworkRequestListener, ProcessListener
         params:Add("--without-zlib")
         params:Add("--without-png")
         params:Add("--without-bzip2")
-        if arm
-            params:Add("-target")
-            params:Add("arm64-apple-macos")
-        end
 
         process:AddListener(me)
 
@@ -466,18 +619,21 @@ class Main is NetworkRequestListener, ProcessListener
     end
 
     action Error(ProcessEvent event)
+        lastOutput:Add(event:GetOutput())
         if verbose
             output event:GetOutput()
         end
     end
 
     action Output(ProcessEvent event)
+        lastOutput:Add(event:GetOutput())
         if verbose
             output event:GetOutput()
         end
     end
 
     action ProcessStopped(ProcessEvent event)
+        lastExit = event:GetExit()
         if verbose
             output "Finished " + event:GetName()
         end

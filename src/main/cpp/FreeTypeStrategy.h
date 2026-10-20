@@ -57,6 +57,22 @@ JNIEXPORT jobject JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_Free
 
 /*
  * Class:     plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy
+ * Method:    GetFamily
+ * Signature: (J)Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy_GetFamily
+  (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy
+ * Method:    GetStyleName
+ * Signature: (J)Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy_GetStyleName
+  (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy
  * Method:    GetLineHeightNative
  * Signature: ()J
  */

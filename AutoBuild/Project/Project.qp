@@ -1,10 +1,12 @@
 {
+    "AndroidAssets" : "media",
     "DevelopmentEnvironmentVersion" : "Quorum Studio 4.0.3",
     "ExecutableName" : "Default",
+    "IOSAssets" : "media",
     "IOS_BUNDLE" : "org.quorumlanguage",
     "IOS_DEVICE" : "iPhone 12 Simulator",
     "Main" : "/SourceCode/Main.quorum",
-    "MobileAssets" : "media",
+    "Project Version" : "1.0",
     "ProjectName" : "AutoBuild",
     "ProjectType" : "JavaType",
     "iosVersion" : "15.0"

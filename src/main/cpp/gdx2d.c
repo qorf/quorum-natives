@@ -13,9 +13,7 @@
 #include "gdx2d.h"
 #include <stdlib.h>
 #define STB_IMAGE_IMPLEMENTATION
-#define STBI_NO_FAILURE_STRINGS
 #include "stb_image.h"
-#include "jpgd_c.h"
 
 static uint32_t gdx2d_blend = GDX2D_BLEND_NONE;
 static uint32_t gdx2d_scale = GDX2D_SCALE_NEAREST;
@@ -220,18 +218,48 @@ static __inline get_pixel_func get_pixel_func_ptr(uint32_t format) {
 	}
 }
 
-gdx2d_pixmap* gdx2d_load(const unsigned char *buffer, uint32_t len) {
-	int32_t width, height, format;
-    
-	const unsigned char* pixels = stbi_load_from_memory(buffer, len, &width, &height, &format, 0);
-	if (pixels == NULL) {
-		pixels = jpgd_decompress_jpeg_image_from_memory(buffer, len, &width, &height, &format, 3);
-	}
-	if (pixels == NULL)
-		return NULL;
+// The reason the last gdx2d_load failed, or 0.
+static const char* gdx2d_failure_reason = 0;
 
-	gdx2d_pixmap* pixmap = (gdx2d_pixmap*)malloc(sizeof(gdx2d_pixmap));
-	if (!pixmap) return 0;
+gdx2d_pixmap* gdx2d_load(const unsigned char *buffer, uint32_t len, uint32_t requestedChannels) {
+	int32_t width = 0, height = 0, fileChannels = 0, format;
+	unsigned char* pixels;
+	gdx2d_pixmap* pixmap;
+
+	gdx2d_failure_reason = 0;
+	if (buffer == NULL || len == 0 || len > 0x7fffffff) {
+		gdx2d_failure_reason = "empty or too large image buffer";
+		return NULL;
+	}
+	if (requestedChannels > 4) {
+		gdx2d_failure_reason = "requested channels must be 0 to 4";
+		return NULL;
+	}
+
+	// stb_image decodes progressive JPEGs too, so jpgd is no longer used as
+	// a fallback. It crashed on corrupt JPEGs, and ran on every file
+	// stb_image rejected.
+	pixels = stbi_load_from_memory(buffer, (int)len, &width, &height, &fileChannels, (int)requestedChannels);
+	if (pixels == NULL) {
+		gdx2d_failure_reason = stbi_failure_reason() != NULL ? stbi_failure_reason() : "unknown image format";
+		return NULL;
+	}
+
+	// stb_image reports the file's channels, not the requested ones, so the
+	// format comes from the request whenever there is one.
+	format = requestedChannels != 0 ? (int32_t)requestedChannels : fileChannels;
+	if (format < GDX2D_FORMAT_ALPHA || format > GDX2D_FORMAT_RGBA8888 || width <= 0 || height <= 0) {
+		stbi_image_free(pixels);
+		gdx2d_failure_reason = "unsupported channel count";
+		return NULL;
+	}
+
+	pixmap = (gdx2d_pixmap*)malloc(sizeof(gdx2d_pixmap));
+	if (!pixmap) {
+		stbi_image_free(pixels);
+		gdx2d_failure_reason = "out of memory";
+		return NULL;
+	}
 	pixmap->width = (uint32_t)width;
 	pixmap->height = (uint32_t)height;
 	pixmap->format = (uint32_t)format;
@@ -283,9 +311,9 @@ void gdx2d_set_scale (uint32_t scale) {
 }
 
 const char *gdx2d_get_failure_reason(void) {
-	if (stbi_failure_reason())
-		return stbi_failure_reason();
-    return jpgd_failure_reason();
+	if (gdx2d_failure_reason)
+		return gdx2d_failure_reason;
+	return "no failure";
 }
 
 static __inline void clear_alpha(const gdx2d_pixmap* pixmap, uint32_t col) {

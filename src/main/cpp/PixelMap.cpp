@@ -4,19 +4,19 @@
 
 	#include "gdx2d.h"
 	#include <stdlib.h>
-	 JNIEXPORT jobject JNICALL Java_plugins_quorum_Libraries_Game_Graphics_PixelMap_Load(JNIEnv* env, jclass clazz, jlongArray nativeData, jbyteArray buffer, jint offset, jint len) 
+	 JNIEXPORT jobject JNICALL Java_plugins_quorum_Libraries_Game_Graphics_PixelMap_Load(JNIEnv* env, jclass clazz, jlongArray nativeData, jbyteArray buffer, jint offset, jint len, jint requestedChannels) 
         {
 
 //@line:266
 	
 		const unsigned char* p_buffer = (const unsigned char*)env->GetPrimitiveArrayCritical(buffer, 0);
-		gdx2d_pixmap* pixmap = gdx2d_load(p_buffer + offset, len);
+		gdx2d_pixmap* pixmap = gdx2d_load(p_buffer + offset, len, requestedChannels);
 		env->ReleasePrimitiveArrayCritical(buffer, (char*)p_buffer, 0);
 	
 		if(pixmap==0)
 			return 0;
 	
-		jobject pixel_buffer = env->NewDirectByteBuffer((void*)pixmap->pixels, pixmap->width * pixmap->height * gdx2d_bytes_per_pixel(pixmap->format));
+		jobject pixel_buffer = env->NewDirectByteBuffer((void*)pixmap->pixels, (jlong)pixmap->width * pixmap->height * gdx2d_bytes_per_pixel(pixmap->format));
 		jlong* p_native_data = (jlong*)env->GetPrimitiveArrayCritical(nativeData, 0);
 		p_native_data[0] = (jlong)pixmap;
 		p_native_data[1] = pixmap->width;
@@ -37,7 +37,7 @@ JNIEXPORT jobject JNICALL Java_plugins_quorum_Libraries_Game_Graphics_PixelMap_N
 		if(pixmap==0)
 			return 0;
 	
-		jobject pixel_buffer = env->NewDirectByteBuffer((void*)pixmap->pixels, pixmap->width * pixmap->height * gdx2d_bytes_per_pixel(pixmap->format));
+		jobject pixel_buffer = env->NewDirectByteBuffer((void*)pixmap->pixels, (jlong)pixmap->width * pixmap->height * gdx2d_bytes_per_pixel(pixmap->format));
 		jlong* p_native_data = (jlong*)env->GetPrimitiveArrayCritical(nativeData, 0);
 		p_native_data[0] = (jlong)pixmap;
 		p_native_data[1] = pixmap->width;

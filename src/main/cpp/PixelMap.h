@@ -30,10 +30,10 @@ extern "C" {
 /*
  * Class:     plugins_quorum_Libraries_Game_Graphics_PixelMap
  * Method:    Load
- * Signature: ([J[BII)Ljava/nio/ByteBuffer;
+ * Signature: ([J[BIII)Ljava/nio/ByteBuffer;
  */
 JNIEXPORT jobject JNICALL Java_plugins_quorum_Libraries_Game_Graphics_PixelMap_Load
-  (JNIEnv *, jclass, jlongArray, jbyteArray, jint, jint);
+  (JNIEnv *, jclass, jlongArray, jbyteArray, jint, jint, jint);
 
 /*
  * Class:     plugins_quorum_Libraries_Game_Graphics_PixelMap
