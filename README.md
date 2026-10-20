@@ -1,56 +1,99 @@
 # quorum-natives
 
-This is an experimental repository to create native libraries for the Quorum programming language. It is experimental in that it currently can build the natives only on Mac and these binaries are not included in the official Quorum build. The target for release of these binaries, including integration into the language, is targeted for Quorum 11 or 12.
+The C and C++ native libraries for the Quorum programming language's game engine: image loading (stb_image), fonts (FreeType), and buffer and matrix helpers, called from Java through JNI. The finished libraries are copied into the standard library in `quorum-language/Quorum/Library/Standard/Native`.
 
-## Mac
-To build Quorum-natives, follow these procedures:
+| Platform | File | Where it goes in `Native/` |
+|---|---|---|
+| Mac, Apple Silicon | `libGameEngineCPluginsArm.so` | `Libraries.Game` |
+| Mac, Intel | `libGameEngineCPlugins.so` | `Libraries.Game` |
+| Windows, 64-bit | `libGameEngineCPlugins64.dll` | `Libraries.Game` |
+| iPhone and iPad | `ios.a` | `mobile` |
+| iOS Simulator | `iosSimulator.a` | `mobile` |
 
-1. First download CMake: https://cmake.org/download/
-2. Add CMake to the path. Instructions can typically be found from the menu item Tools -> How to Install for Command Line Usage. On Mac, this might look like:
+## Building everything on a Mac (recommended)
 
-sudo "/Applications/CMake.app/Contents/bin/cmake-gui" --install
+One run of the AutoBuild project builds the Mac, Windows and iOS natives and copies them into the standard library.
 
-3.	Install Quorum Studio 4.3 or above: https://quorumlanguage.com/download.html
-4.	Open the project "AutoBuild" in Quorum Studio and run it. This will download dependencies, including various JDKs and Freetype, and then compile freetype. The process can take some time on first run, like 5 or 10 minutes, depending on the machine. Subsequent builds are smart enough to skip most of the lengthy work. This will build freetype only in x86_64 mode only, for reasons that are not clear. 
-5.	The compiled freetype should show up in FreeType_Release/freetype_x86_64.a. 
-6.	Now run the following command from the console in the download/freetype folder on an ARM processor. I am sure there is a workaround for this, but this is the current procedure
+**Install these once:**
+1. **Homebrew** (https://brew.sh). Its installer asks for your password, so it can't be installed for you:
 
-./configure --without-zlib --without-png --without-bzip2 -target arm64-apple-macos
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   ```
+2. **The Xcode command line tools**, with `xcode-select --install`. For iOS you need the full **Xcode** from the App Store, which includes the iOS SDK.
+3. **Quorum Studio 4.3 or above** (https://quorumlanguage.com/download.html). Its JDK provides the JNI headers for Mac and iOS.
 
-7.	Copy the file at objs/.libs/libfreetype.a to FreeType_Release/freetype_Arm.a in the freetype folder in downloads
-8.	Double check the architecture of both files is correct:
-lipo -info FreeType_Release/freetype_Arm.a
-9.	Download and install VSCode: https://code.visualstudio.com
-10.	Open the root folder of quorum-natives
-11.	Install the CMake plugin for VSCode. This will pop up automatically for install when opening CMakeLists.txt.
-12.	On line 2, call Set(ARCH OFF) which will put the files in x86_64 mode for building.
-13.	Select Build All. This will create a file called libGameEngineCPlugins.so in the root folder.
-14.	Move the compiled file to the name libGameEngineCPlugins.so.
-15.	Change the architecture to ON and then move that file to libGameEngineCPluginsArm.so
-16.	Finally, move both files to quorum-language/Quorum/Libraries/Standard/Native/Libraries.Game
-17.	Re-run the standard library and do a standard library override.
+AutoBuild installs **CMake** and **MinGW-w64** (the Windows cross-compiler) with Homebrew if they're missing.
 
-You can also combine them with commands like lipo libGameEngineCPlugins.so libGameEngineCPluginsArm.so -create -output Mac.so
+**Then:**
+1. Keep `quorum-natives` and `quorum-language` in the same folder. The finished files are copied to `../quorum-language/Quorum/Library/Standard/Native`.
+2. Open the project `AutoBuild` in Quorum Studio and run it. The first run downloads FreeType and the Windows JDK's headers, and takes a few minutes. Later runs only rebuild what changed.
+3. At the end, a summary lists which platforms built and which failed. A failed step stops only its own platform, and prints the last 40 lines of the tool's output.
+4. Rebuild the standard library as usual.
 
-## iPhone and the iPhone Simulator
-Compiling for iPhone is generally simpler, as the auto-build script is a bit smarter. Essentially, you set a flag and run the program. 
+**Settings** near the top of `AutoBuild/SourceCode/Main.quorum`:
 
-1.	Open AutoBuild
-2.	Set buildIOS to true
-3.	Run the program. The files are under ios/releases. Both files need to be moved to the standard library under quorum-language/Quorum/Libraries/Standard/Native/mobile
+| Setting | Default | Meaning |
+|---|---|---|
+| `buildMac` | `true` | Builds the Mac libraries (Apple Silicon and Intel). |
+| `buildWindows` | `true` | Cross-compiles the Windows DLL. |
+| `buildIOS` | `true` | Builds the iOS device and simulator libraries. |
+| `iosVersion` | `"14.0"` | The oldest iOS the libraries support. |
+| `copyToStandardLibrary` | `true` | Copies the results into the standard library. If false, they stay in `build/`. |
+| `verbose` | `false` | Prints every tool's output, not only on failure. |
 
+**Testing the Windows DLL:** it's built on the Mac but can't run there, so test it on Windows before shipping it.
 
-## Building the Freetype Library for Windows
-Follow these steps to build Freetype as a static library on Windows. You'll need this as a dependency for building libGameEngineCPlugins64.dll.
-1. Run the AutoBuild Quorum project, if you haven't already. This will automatically download and unzip the Freetype source to the "download" folder.
-2. Open the Visual Studio solution project "freetype.sln" located at "download/freetype/builds/windows/vc2010". (These steps have been tested with Visual Studio 2019, though other versions should work as well.)
-3. In the toolbar, change the configuration dropdown to "Release Static" and the platform dropdown to "x64". (By default, these most likely appear as "Debug" and "Win32", respectively.)
-4. Build the solution by using "Build" > "Build Solution" from the menu, or use the hotkey Ctrl + Shift + B. (The build will produce lots of warnings. This is normal.)
-5. The solution will output "freetype.lib" to "download/freetype/objs", as well as an identical copy in "download/freetype/objs/x64/Release Static".
-6. With Freetype compiled, you can now finish following the steps above to build the natives for Windows. 
-7. If using Visual Studio for your build tools in VSCode, make sure the release variant selected in the blue bar at the bottom of the screen is "Release" and not "Debug" when building with CMake.
-8. Build the library using CMake in VS, mirroring the approach for Mac above.
+### How it works
 
+Everything is built from the `CMakeLists.txt` in the root folder, one build folder per platform:
+
+| Platform | Folder | How |
+|---|---|---|
+| Mac | `build/mac` | One build for both `arm64` and `x86_64`, with FreeType built in. `lipo -thin` then splits it into the two files `Game.java` loads (`build/mac/thin`). |
+| Windows | `build/windows` | Cross-compiled with MinGW-w64 (`toolchains/mingw-w64.cmake`), with the GCC runtime linked in. |
+| iOS | `build/ios-device`, `build/ios-simulator` | `CMAKE_SYSTEM_NAME=iOS`. Static libraries with the natives, `src/ios`, and FreeType merged in (`liballnatives.a`). |
+
+The same builds from Terminal, from the root of `quorum-natives`:
+
+```bash
+cmake -S . -B build/mac && cmake --build build/mac --parallel
+```
+
+```bash
+cmake -S . -B build/windows -DCMAKE_TOOLCHAIN_FILE=$PWD/toolchains/mingw-w64.cmake && cmake --build build/windows --parallel
+```
+
+```bash
+cmake -S . -B build/ios-device -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos -DCMAKE_OSX_ARCHITECTURES=arm64 && cmake --build build/ios-device --parallel
+```
+
+For the simulator, use `-DCMAKE_OSX_SYSROOT=iphonesimulator "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"` and `build/ios-simulator`.
+
+### Troubleshooting
+
+- **"download/freetype/CMakeLists.txt is the iOS build's copy":** an older iOS build replaced FreeType's own CMakeLists.txt. AutoBuild fixes this itself by extracting FreeType again. By hand, delete `download/freetype` and run AutoBuild.
+- **"CMake was not found":** install Homebrew, or `brew install cmake`, and run again. Quorum Studio started from the Finder doesn't see your Terminal `PATH`, so AutoBuild looks in `/opt/homebrew/bin`, `/usr/local/bin` and `CMake.app`.
+- **iOS fails at "Checking for the iOS SDK":** install the full Xcode, not just the command line tools.
+
+### More information
+
+- `AutoBuildChanges.md`: why the build was rebuilt this way, and what changed.
+- `LinuxNatives.md`: a plan for Linux natives (not built yet).
+
+## Building the natives on Windows
+
+The Windows DLL is normally cross-compiled on a Mac (above). To build it on Windows itself with Visual Studio instead:
+1. Run the AutoBuild Quorum project, if you haven't already. This downloads and unzips the FreeType source and the Windows JDK into the "download" folder.
+2. Install CMake and Visual Studio (2019 or newer, with "Desktop development with C++").
+3. From a Developer Command Prompt in the root of `quorum-natives`, run:
+
+```
+cmake -S . -B build/win -A x64
+cmake --build build/win --config Release
+```
+
+The root `CMakeLists.txt` builds FreeType as part of the build, so the older steps of building `freetype.sln` separately aren't needed. This route hasn't been tested yet; AutoBuild on a Mac uses the MinGW route instead.
 
 ## Building the Web Assembly Module (.WASM) for web browsers:
 Follow these steps to build the natives for use in web browsers. 
