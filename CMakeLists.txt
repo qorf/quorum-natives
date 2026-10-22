@@ -5,8 +5,13 @@ cmake_minimum_required(VERSION 3.18)
 #            (both architectures at once, libGameEngineCPlugins.so)
 #   Windows: cmake -S . -B build/windows -DCMAKE_TOOLCHAIN_FILE=toolchains/mingw-w64.cmake
 #            (cross-compiled on a Mac, libGameEngineCPlugins64.dll)
+#            On Windows itself, with Visual Studio's C++ tools:
+#            cmake -S . -B build/windows -A x64 && cmake --build build/windows --config Release
+#            (build/windows/Release/libGameEngineCPlugins64.dll)
 #   iOS:     cmake -S . -B build/ios -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos -DCMAKE_OSX_ARCHITECTURES=arm64
 #            (liballnatives.a; use iphonesimulator and "arm64;x86_64" for the simulator)
+#   Web:     emcmake cmake -S . -B build/web, with Emscripten's environment set up
+#            (load.js, load.wasm and load.data, the fonts; AutoBuild does this)
 
 # On a Mac building for the Mac, build both architectures at once. Set
 # before project() so FreeType (added below) is built for both too.
@@ -25,6 +30,9 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 if (CMAKE_SYSTEM_NAME STREQUAL "iOS")
     set(QUORUM_IOS ON)
 endif()
+if (EMSCRIPTEN)
+    set(QUORUM_WEB ON)
+endif()
 
 # JNI headers only. jni.h and jni_md.h are the same for both Mac
 # architectures and for iOS, so any Mac JDK works; Quorum Studio's is the
@@ -36,7 +44,8 @@ elseif (WIN32)
     set(QUORUM_JDK "${CMAKE_SOURCE_DIR}/download/jdk/windows/x64/jdk-11.0.15+10" CACHE PATH "JDK whose headers are used")
     set(JNI_PLATFORM win32)
 endif()
-if (NOT EXISTS "${QUORUM_JDK}/include/jni.h")
+# The web module is called from JavaScript, not Java, so it needs no JNI.
+if (NOT QUORUM_WEB AND NOT EXISTS "${QUORUM_JDK}/include/jni.h")
     message(FATAL_ERROR "No jni.h under ${QUORUM_JDK}. Pass -DQUORUM_JDK=<a JDK home>.")
 endif()
 
@@ -58,6 +67,31 @@ if (FREETYPE_CMAKE MATCHES "allnativesv2")
     message(FATAL_ERROR "download/freetype/CMakeLists.txt is the iOS build's copy. Delete download/freetype and run AutoBuild again to extract FreeType fresh.")
 endif()
 add_subdirectory(download/freetype EXCLUDE_FROM_ALL)
+
+if (QUORUM_WEB)
+    # The web module: FreeType for Quorum's fonts in the browser. It makes
+    # load.js, load.wasm, and load.data, which holds src/web/fonts as
+    # /fonts. They go in the standard library's Plugins/javascript, whose
+    # FreeTypeStrategy.js calls these functions with cwrap. It is built from
+    # the same FreeType as the desktop natives, which has the signed
+    # distance fields loadSDFCharC needs.
+    set(WEB_EXPORTS "_main,_malloc,_free,_InitializeFreeTypeC,_LoadFontC,_IsFontAvailableC,_SetSizeC,_SetAngleC,_DisposeC,_GetKerningC,_GetUnderlinePositionC,_GetUnderlineThicknessC,_GetLineHeightC,_GetMaximumAscentC,_GetMaximumDescentC,_loadCharC,_loadSDFCharC,_getBitmapC,_getBitmapDataC,_GetLastError")
+    add_executable(load src/web/FreeTypeStrategy.cpp)
+    set_target_properties(load PROPERTIES SUFFIX ".js")
+    target_link_libraries(load PRIVATE freetype)
+    target_compile_options(load PRIVATE -O3)
+    target_link_options(load PRIVATE
+        -O3
+        "SHELL:-s WASM=1"
+        "SHELL:-s ASSERTIONS=1"
+        "SHELL:-s SAFE_HEAP=1"
+        "SHELL:-s ALLOW_MEMORY_GROWTH=1"
+        "SHELL:-s EXPORTED_FUNCTIONS=${WEB_EXPORTS}"
+        "SHELL:-s EXPORTED_RUNTIME_METHODS=cwrap,getValue"
+        "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/src/web/fonts@fonts")
+    # Nothing else is built for the web.
+    return()
+endif()
 
 set(NATIVE_SOURCES
     src/main/cpp/BufferUtils.cpp

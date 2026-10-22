@@ -24,7 +24,21 @@ use Libraries.System.Properties
     Windows:
 
     On a Mac, the DLL is cross-compiled with MinGW-w64 (toolchains/mingw-w64.cmake), using the downloaded Windows JDK's
-    JNI headers. It can't be run on a Mac, so test it on Windows. On Windows itself, DoWindows is the older route.
+    JNI headers. It can't be run on a Mac, so test it on Windows.
+
+    On Windows, only the DLL can be built (DoWindowsHost); Mac and iOS need Apple's compilers and SDKs. It uses the
+    same CMakeLists.txt, with Visual Studio's C++ tools if installed (found with vswhere), or else MinGW from MSYS2.
+    CMake is installed with winget if it's missing; the Visual Studio Build Tools only if installVisualStudioBuildTools
+    is true.
+
+    Web:
+
+    On a Mac or Windows (buildWebNatives), the web module is built with Emscripten from the same CMakeLists.txt and
+    FreeType: load.js, load.wasm and load.data (src/web/fonts), copied to the standard library's Plugins/javascript.
+    Emscripten's SDK is downloaded into download/emsdk and installed the first time (about 1 GB). Its environment is
+    set up by a small script that AutoBuild writes and runs (build/web-*.sh or .bat). emsdk's installer is Python, so
+    its first install is started with emsdk's own Python (the one it installs for itself on Mac and Windows), downloaded
+    directly; no Python needs to be installed. On Windows it also downloads Ninja.
 
     Mac:
 
@@ -91,14 +105,25 @@ class Main is NetworkRequestListener, ProcessListener
     constant text CMAKE_LISTS = "CMakeLists.txt"
     constant text WINDOWS_JDK = "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_x64_windows_hotspot_11.0.15_10.zip"
     constant text WINDOWS_JDK_NAME = "OpenJDK11U-jdk_x64_windows_hotspot_11.0.15_10.zip"
-    constant text EMSCRIPTEN_REPO_SOURCE = "https://github.com/emscripten-core/emsdk.git"
-    constant text EMSCRIPTEN_REPO_FOLDER = "emsdk"
+    // Emscripten's SDK, for the web module, and Ninja, the build tool CMake
+    // uses with Emscripten on Windows.
+    constant text EMSDK_ZIP = "https://github.com/emscripten-core/emsdk/archive/refs/heads/main.zip"
+    constant text EMSDK_ZIP_NAME = "emsdk-main.zip"
+    constant text NINJA_WINDOWS_ZIP = "https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-win.zip"
+    constant text NINJA_WINDOWS_ZIP_NAME = "ninja-win.zip"
+    // Where emsdk downloads its own packages, such as its Python.
+    constant text EMSDK_PACKAGES = "https://storage.googleapis.com/webassembly/emscripten-releases-builds/deps/"
     constant text FREETYPE = "https://download.savannah.gnu.org/releases/freetype/freetype-2.13.0.tar.gz"
     constant text FREETYPE_NAME = "freetype-2.13.0.tar.gz"
 
     constant text MAC_ARM_NAME = "libGameEngineCPluginsArm.so"
     constant text MAC_X86_NAME = "libGameEngineCPlugins.so"
     constant text WINDOWS_NAME = "libGameEngineCPlugins64.dll"
+
+    // Where Windows tools are usually installed. Forward slashes work on Windows.
+    constant text WINDOWS_CMAKE = "C:/Program Files/CMake/bin/cmake.exe"
+    constant text WINDOWS_VSWHERE = "C:/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe"
+    constant text VISUAL_STUDIO = "Visual Studio"
     constant text IOS_NAME = "ios.a"
     constant text IOS_SIMULATOR_NAME = "iosSimulator.a"
 
@@ -107,6 +132,8 @@ class Main is NetworkRequestListener, ProcessListener
     constant text STANDARD_LIBRARY_NATIVE = "../../quorum-language/Quorum/Library/Standard/Native"
     constant text DESKTOP_FOLDER = "/Libraries.Game"
     constant text MOBILE_FOLDER = "/mobile"
+    // Where the web module (load.js, load.wasm, load.data) goes.
+    constant text STANDARD_LIBRARY_JAVASCRIPT = "../../quorum-language/Quorum/Library/Standard/Plugins/javascript"
     boolean copyToStandardLibrary = true
 
     // Which platforms a run on a Mac builds. Windows is cross-compiled
@@ -114,10 +141,17 @@ class Main is NetworkRequestListener, ProcessListener
     boolean buildMac = true
     boolean buildWindows = true
     boolean buildIOS = true
+
+    // On Windows, CMake is installed with winget if it's missing. Visual
+    // Studio's C++ Build Tools are several gigabytes and need an
+    // administrator's permission, so they're only installed if this is true.
+    // Without them, an installed MinGW (MSYS2) is used instead.
+    boolean installVisualStudioBuildTools = false
     text iosVersion = "14.0"
 
-    // If true, attempt to build the web natives using Emscripten. Only tested on Windows side, currently.
-    boolean buildWebNatives = false
+    // Builds the web module with Emscripten, on a Mac or Windows. The first
+    // time, Emscripten is downloaded and installed (about 1 GB).
+    boolean buildWebNatives = true
 
     boolean verbose = false
 
@@ -149,12 +183,6 @@ class Main is NetworkRequestListener, ProcessListener
             output "Downloading the Windows JDK"
             Download(WINDOWS_JDK, WINDOWS_JDK_NAME)
             Deflate(WINDOWS_JDK_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/windows/x64/jdk-11.0.15+10")
-        end
-
-        if prop:IsWindows() and buildWebNatives
-            output "Checking for Emscripten repository..."
-            Clone(EMSCRIPTEN_REPO_SOURCE, EMSCRIPTEN_REPO_FOLDER)
-            ActivateEmscripten()
         end
 
         DoPlatformBuild()
@@ -192,7 +220,7 @@ class Main is NetworkRequestListener, ProcessListener
         if prop:IsMac()
             DoMacHost()
         elseif prop:IsWindows()
-            DoWindows()
+            DoWindowsHost()
         end
     end
 
@@ -240,6 +268,20 @@ class Main is NetworkRequestListener, ProcessListener
             else
                 summary:Add("iOS: FAILED (see above)")
             end
+        end
+        if buildWebNatives
+            AddWebResult()
+        end
+    end
+
+    /*
+        Builds the web module, and adds how it went to the summary.
+    */
+    action AddWebResult
+        if DoWeb()
+            summary:Add("Web: built")
+        else
+            summary:Add("Web: FAILED (see above)")
         end
     end
 
@@ -377,6 +419,10 @@ class Main is NetworkRequestListener, ProcessListener
         parameters:Empty()
         parameters:Add("--build")
         parameters:Add(folder)
+        // Visual Studio builds Debug unless told otherwise; other
+        // generators use CMAKE_BUILD_TYPE and ignore this.
+        parameters:Add("--config")
+        parameters:Add("Release")
         parameters:Add("--parallel")
         return RunStep("Building " + folder + " (the first build takes a minute)", cmake, parameters, root)
     end
@@ -507,69 +553,224 @@ class Main is NetworkRequestListener, ProcessListener
         return true
     end
 
-    action DoWindows
-        output "Configuring Freetype"
-        ConfigureFreetype()
-        output "Cleaning"
-        CleanFreetype()
-        output "Building Freetype"
-        BuildFreetype()
+    /*
+        On Windows, only the Windows DLL can be built: the Mac and iOS
+        natives need Apple's compilers and SDKs, which only run on a Mac.
+        The DLL is built with the same CMakeLists.txt as on a Mac, with
+        Visual Studio's C++ tools if they're installed, or else MinGW.
+        CMake is installed with winget if it's missing.
+    */
+    action DoWindowsHost
+        cmake = FindWindowsCMake()
+        if cmake = ""
+            summary:Add("Nothing built: CMake is missing.")
+            return now
+        end
 
-        output "Copying Library"
-        //Now move the freetype file out
-
-        output "Building Complete."
+        if buildWindows
+            if DoWindowsOnWindows()
+                summary:Add("Windows: built")
+            else
+                summary:Add("Windows: FAILED (see above)")
+            end
+        end
+        if buildWebNatives
+            AddWebResult()
+        end
+        if buildMac or buildIOS
+            summary:Add("Mac and iOS: skipped. They can only be built on a Mac, which has Apple's compilers and SDKs.")
+        end
     end
 
-    action ConfigureFreetype
-        //./configure --without-zlib --without-png --without-bzip2
+    /*
+        Builds the Windows DLL on Windows and copies it to the standard
+        library. Visual Studio builds into build/windows, MinGW into
+        build/windows-mingw, since CMake can't switch compilers in a folder
+        it has already set up.
+    */
+    action DoWindowsOnWindows returns boolean
+        output "=== Windows ==="
+        text compiler = FindWindowsCompiler()
+        if compiler = ""
+            return false
+        end
 
-        File downloads
-        downloads:SetPath(DOWNLOADS + "/freetype")
-        //first run the untar commands
-        Process process
-        process:SetDirectory(downloads)
-        process:SetName("./configure")
-        Array<text> params
-        params:Add("--without-zlib")
-        params:Add("--without-png")
-        params:Add("--without-bzip2")
+        Array<text> options
+        text folder = "build/windows"
+        if compiler = VISUAL_STUDIO
+            options:Add("-A")
+            options:Add("x64")
+        else
+            // MinGW: the compiler is the folder holding gcc.exe.
+            folder = "build/windows-mingw"
+            options:Add("-G")
+            options:Add("MinGW Makefiles")
+            options:Add("-DCMAKE_C_COMPILER=" + compiler + "/gcc.exe")
+            options:Add("-DCMAKE_CXX_COMPILER=" + compiler + "/g++.exe")
+            options:Add("-DCMAKE_RC_COMPILER=" + compiler + "/windres.exe")
+            options:Add("-DCMAKE_MAKE_PROGRAM=" + compiler + "/mingw32-make.exe")
+        end
+        if not BuildWithCMake(folder, options)
+            return false
+        end
 
-        process:AddListener(me)
-
-        process:SetParameters(params)
-        process:Run()
+        // Visual Studio puts each configuration in its own folder.
+        text built = "../" + folder + "/Release/" + WINDOWS_NAME
+        File releaseFile
+        releaseFile:SetPath(built)
+        if not releaseFile:Exists()
+            built = "../" + folder + "/" + WINDOWS_NAME
+        end
+        File builtFile
+        builtFile:SetPath(built)
+        if not builtFile:Exists()
+            output "The build finished, but " + WINDOWS_NAME + " wasn't found in " + folder + "."
+            return false
+        end
+        output "Built " + builtFile:GetAbsolutePath()
+        CopyToStandardLibrary(built, DESKTOP_FOLDER, WINDOWS_NAME)
+        return true
     end
 
-    action CleanFreetype
-        //./configure --without-zlib --without-png --without-bzip2
-        File downloads
-        downloads:SetPath(DOWNLOADS + "/freetype")
-        //first run the untar commands
-        Process process
-        process:SetDirectory(downloads)
-        process:SetName("make")
-        Array<text> params
-        params:Add("clean")
-        process:AddListener(me)
+    /*
+        Finds CMake on Windows: where its installer puts it, or on the PATH.
+        If neither, it's installed with winget, Windows' package manager.
+        Returns how to run it, or "" if it can't be found or installed.
+    */
+    action FindWindowsCMake returns text
+        File installed
+        installed:SetAbsolutePath(WINDOWS_CMAKE)
+        if installed:Exists()
+            return WINDOWS_CMAKE
+        end
 
-        process:SetParameters(params)
-        process:Run()
+        File root
+        root:SetPath("..")
+        Array<text> parameters
+        parameters:Add("--version")
+        if RunStep("Looking for CMake on the PATH", "cmake", parameters, root)
+            return "cmake"
+        end
+
+        parameters:Empty()
+        parameters:Add("install")
+        parameters:Add("--id")
+        parameters:Add("Kitware.CMake")
+        parameters:Add("--exact")
+        parameters:Add("--silent")
+        parameters:Add("--accept-package-agreements")
+        parameters:Add("--accept-source-agreements")
+        if RunStep("Installing CMake with winget (this can take a few minutes)", "winget", parameters, root)
+            if installed:Exists()
+                return WINDOWS_CMAKE
+            end
+        end
+
+        output "CMake was not found and couldn't be installed. Install it from https://cmake.org/download"
+        output "(choose to add CMake to the PATH), then run AutoBuild again."
+        return ""
     end
 
-    action BuildFreetype
-        //./configure --without-zlib --without-png --without-bzip2
-        File downloads
-        downloads:SetPath(DOWNLOADS + "/freetype")
-        //first run the untar commands
-        Process process
-        process:SetDirectory(downloads)
-        process:SetName("make")
-        Array<text> params
-        process:AddListener(me)
+    /*
+        Finds a C and C++ compiler for Windows: Visual Studio's C++ tools,
+        found with Microsoft's vswhere, or else MinGW in its usual folders.
+        If neither is there and installVisualStudioBuildTools is true, the
+        Visual Studio Build Tools are installed with winget.
 
-        process:SetParameters(params)
-        process:Run()
+        Returns VISUAL_STUDIO, the folder holding MinGW's gcc.exe, or "" if
+        there is no compiler.
+    */
+    action FindWindowsCompiler returns text
+        if HasVisualStudioCompiler()
+            return VISUAL_STUDIO
+        end
+
+        Array<text> folders
+        folders:Add("C:/msys64/ucrt64/bin")
+        folders:Add("C:/msys64/mingw64/bin")
+        folders:Add("C:/mingw64/bin")
+        folders:Add("C:/ProgramData/mingw64/mingw64/bin")
+        i = 0
+        repeat while i < folders:GetSize()
+            File gcc
+            gcc:SetAbsolutePath(folders:Get(i) + "/gcc.exe")
+            File make
+            make:SetAbsolutePath(folders:Get(i) + "/mingw32-make.exe")
+            if gcc:Exists() and make:Exists()
+                output "Using MinGW in " + folders:Get(i)
+                return folders:Get(i)
+            end
+            i = i + 1
+        end
+
+        if installVisualStudioBuildTools
+            File root
+            root:SetPath("..")
+            Array<text> parameters
+            parameters:Add("install")
+            parameters:Add("--id")
+            parameters:Add("Microsoft.VisualStudio.2022.BuildTools")
+            parameters:Add("--exact")
+            parameters:Add("--silent")
+            parameters:Add("--accept-package-agreements")
+            parameters:Add("--accept-source-agreements")
+            parameters:Add("--override")
+            parameters:Add("--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended")
+            if RunStep("Installing the Visual Studio Build Tools with winget (several gigabytes; Windows will ask for permission)", "winget", parameters, root)
+                if HasVisualStudioCompiler()
+                    return VISUAL_STUDIO
+                end
+            end
+        end
+
+        output "No C++ compiler was found. Either:"
+        output "    install Visual Studio, or its Build Tools, with the 'Desktop development with C++' workload"
+        output "    (https://visualstudio.microsoft.com/downloads, or set installVisualStudioBuildTools to true"
+        output "    in AutoBuild to install them with winget); or"
+        output "    install MinGW with MSYS2 (https://www.msys2.org), then in its terminal:"
+        output "    pacman -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-make"
+        output "Then run AutoBuild again."
+        return ""
+    end
+
+    /*
+        Returns true if Visual Studio, or its Build Tools, is installed with
+        the C++ compiler for 64-bit Windows.
+    */
+    action HasVisualStudioCompiler returns boolean
+        File vswhere
+        vswhere:SetAbsolutePath(WINDOWS_VSWHERE)
+        if not vswhere:Exists()
+            return false
+        end
+
+        File root
+        root:SetPath("..")
+        Array<text> parameters
+        parameters:Add("-latest")
+        parameters:Add("-products")
+        parameters:Add("*")
+        parameters:Add("-requires")
+        parameters:Add("Microsoft.VisualStudio.Component.VC.Tools.x86.x64")
+        parameters:Add("-property")
+        parameters:Add("installationPath")
+        if not RunStep("Looking for Visual Studio's C++ tools", WINDOWS_VSWHERE, parameters, root)
+            return false
+        end
+
+        // vswhere prints the installation's folder, or nothing if none has
+        // the C++ tools.
+        i = 0
+        repeat while i < lastOutput:GetSize()
+            text line = lastOutput:Get(i)
+            line = line:Trim()
+            if not line:IsEmpty()
+                output "Using Visual Studio in " + line
+                return true
+            end
+            i = i + 1
+        end
+        return false
     end
 
     action Deflate(text name, text from, text to)
@@ -695,77 +896,364 @@ class Main is NetworkRequestListener, ProcessListener
         end    
     end
 
-    action Clone(text url, text folderName)
-        File downloads
-        downloads:SetPath(DOWNLOADS)
-        if not downloads:Exists()
-            downloads:CreateDirectories()
+    /*
+        Builds the web module, on a Mac or on Windows: FreeType for Quorum's
+        fonts in the browser, as load.js, load.wasm and load.data (the
+        fonts), and copies them to the standard library's Plugins/javascript.
+
+        It uses Emscripten, which is downloaded into download/emsdk and
+        installed the first time (about 1 GB). Its build needs Emscripten's
+        environment, which a Process can't be given, so each step is written
+        as a small script, build/web-*.sh on a Mac or build/web-*.bat on
+        Windows, and the script is run.
+    */
+    action DoWeb returns boolean
+        output "=== Web ==="
+        Properties prop
+        boolean windows = prop:IsWindows()
+
+        if not EnsureEmscripten(windows)
+            return false
         end
 
-        downloads:SetPath(DOWNLOADS + "/" + folderName)
-        if downloads:Exists()
-            output "Found " + folderName + ", skipping"
-            
-            return now
-        end
-        output "Could not find " + folderName + ", cloning from " + url
+        File root
+        root:SetPath("..")
+        text rootPath = root:GetAbsolutePath()
+        File emsdk
+        emsdk:SetPath(DOWNLOADS + "/emsdk")
+        text emsdkPath = emsdk:GetAbsolutePath()
 
-        Process process
-        File file
-        file:SetPath(DOWNLOADS)
-        process:SetDirectory(file)
-        process:SetName("git")
-        Array<text> parameters
-        parameters:Add("clone")
-        parameters:Add(url)
-        process:SetParameters(parameters)
-        process:AddListener(me)
-        process:Run()
+        text script = ""
+        text newline = ""
+        newline = newline:GetLineFeed()
+        if windows
+            File ninja
+            ninja:SetPath(DOWNLOADS + "/ninja.exe")
+            if not ninja:Exists()
+                output "Ninja is missing, so the web module can't be built."
+                return false
+            end
+            text carriageReturn = ""
+            carriageReturn = carriageReturn:GetCarriageReturn()
+            newline = carriageReturn + newline
+            script = "@echo off" + newline +
+                "call " + Quote(emsdkPath + "/emsdk_env.bat") + " > nul" + newline +
+                "if errorlevel 1 exit /b 1" + newline +
+                "cd /d " + Quote(rootPath) + newline +
+                "call emcmake " + Quote(cmake) + " -S . -B build/web -G Ninja " + Quote("-DCMAKE_MAKE_PROGRAM=" + ninja:GetAbsolutePath()) + " -DCMAKE_BUILD_TYPE=Release" + newline +
+                "if errorlevel 1 exit /b 1" + newline +
+                Quote(cmake) + " --build build/web" + newline
+            if not RunScript("Building the web module with Emscripten", "build/web-build.bat", script, true)
+                return false
+            end
+        else
+            // emsdk's launcher finds the Python emsdk installed for itself,
+            // so nothing about Python is set here.
+            script = "set -e" + newline +
+                "cd " + Quote(emsdkPath) + newline +
+                "chmod +x emsdk" + newline +
+                ". ./emsdk_env.sh > /dev/null 2>&1" + newline +
+                "cd " + Quote(rootPath) + newline +
+                "emcmake " + Quote(cmake) + " -S . -B build/web -DCMAKE_BUILD_TYPE=Release" + newline +
+                Quote(cmake) + " --build build/web --parallel" + newline
+            if not RunScript("Building the web module with Emscripten", "build/web-build.sh", script, false)
+                return false
+            end
+        end
+
+        CopyWebFile("load.js")
+        CopyWebFile("load.wasm")
+        CopyWebFile("load.data")
+        return true
     end
 
-    // Update Emscripten and activate the command line tools (i.e. set paths etc.)
-    action ActivateEmscripten
-        File emsdkFolder
-        emsdkFolder:SetPath(DOWNLOADS + "/" + EMSCRIPTEN_REPO_FOLDER)
+    /*
+        Downloads Emscripten's SDK (emsdk) if it isn't in download/emsdk, and
+        installs and activates its latest version the first time. On Windows
+        it also gets Ninja, the build tool CMake uses with Emscripten there.
 
-        Process pull
-        pull:SetDirectory(emsdkFolder)
-        pull:SetName("git")
+        emsdk's installer is a Python program. On a Mac and on Windows, emsdk
+        installs its own Python and uses it from then on, so the first install
+        is started with that same Python, downloaded directly (see
+        GetEmsdkPython). No Python needs to be installed on the computer.
+    */
+    action EnsureEmscripten(boolean windows) returns boolean
+        File emsdk
+        emsdk:SetPath(DOWNLOADS + "/emsdk")
+        if not emsdk:Exists()
+            output "Downloading Emscripten's SDK"
+            Download(EMSDK_ZIP, EMSDK_ZIP_NAME)
+            Deflate(EMSDK_ZIP_NAME, DOWNLOADS + "/emsdk-main", DOWNLOADS + "/emsdk")
+        end
+        if not emsdk:Exists()
+            output "Emscripten's SDK couldn't be downloaded into " + emsdk:GetAbsolutePath() + "."
+            return false
+        end
+
+        if windows
+            File ninja
+            ninja:SetPath(DOWNLOADS + "/ninja.exe")
+            if not ninja:Exists()
+                output "Downloading Ninja"
+                Download(NINJA_WINDOWS_ZIP, NINJA_WINDOWS_ZIP_NAME)
+                File zip
+                zip:SetPath(DOWNLOADS + "/" + NINJA_WINDOWS_ZIP_NAME)
+                Decompresser decompresser
+                decompresser:DecompressZip(zip)
+            end
+        end
+
+        // emcc is there once the SDK has been installed.
+        File installed
+        installed:SetPath(DOWNLOADS + "/emsdk/upstream/emscripten")
+        if installed:Exists()
+            return true
+        end
+
+        text python = GetEmsdkPython(windows)
+        if python = ""
+            return false
+        end
+
+        text newline = ""
+        newline = newline:GetLineFeed()
+        text emsdkPath = emsdk:GetAbsolutePath()
+        if windows
+            text carriageReturn = ""
+            carriageReturn = carriageReturn:GetCarriageReturn()
+            newline = carriageReturn + newline
+            text script = "@echo off" + newline +
+                "cd /d " + Quote(emsdkPath) + newline +
+                Quote(python) + " emsdk.py install latest" + newline +
+                "if errorlevel 1 exit /b 1" + newline +
+                Quote(python) + " emsdk.py activate latest" + newline
+            return RunScript("Installing Emscripten (the first time only, about 1 GB)", "build/web-install.bat", script, true)
+        else
+            // emsdk's Python for macOS comes with its own certificates, which
+            // its downloads need, as emsdk's own settings for it say.
+            text pythonHome = python:GetSubtext(0, python:GetSize() - 12)
+            text script = "set -e" + newline +
+                "cd " + Quote(emsdkPath) + newline +
+                "for f in " + Quote(pythonHome) + "/lib/python3*/site-packages/certifi/cacert.pem; do" + newline +
+                "    if [ -f " + Quote("$f") + " ]; then export SSL_CERT_FILE=" + Quote("$f") + "; fi" + newline +
+                "done" + newline +
+                "export EMSDK_PYTHON=" + Quote(python) + newline +
+                Quote(python) + " emsdk.py install latest" + newline +
+                Quote(python) + " emsdk.py activate latest" + newline
+            return RunScript("Installing Emscripten (the first time only, about 1 GB)", "build/web-install.sh", script, false)
+        end
+    end
+
+    /*
+        Gets the same Python that emsdk installs for itself on a Mac or on
+        Windows, so its first install can be started without any Python on
+        the computer. The version comes from emsdk's launcher, which looks
+        for it in python/<version>_64bit. The archive's name comes from
+        emsdk's manifest, for this system and processor. It is downloaded from
+        where emsdk gets its packages and unpacked with tar (which also
+        unpacks zip files on Windows) into download/emsdk-python-<version>.
+
+        Returns the path of its python executable, or "" if it can't be had.
+    */
+    action GetEmsdkPython(boolean windows) returns text
+        text quote = ""
+        quote = quote:GetDoubleQuote()
+
+        // The version, from the launcher: python/3.13.3_64bit or, on
+        // Windows, python\3.13.3_64bit.
+        File launcher
+        if windows
+            launcher:SetPath(DOWNLOADS + "/emsdk/emsdk.bat")
+        else
+            launcher:SetPath(DOWNLOADS + "/emsdk/emsdk")
+        end
+        text launcherText = launcher:Read()
+        text marker = "python/"
+        if windows
+            marker = "python\"
+        end
+        integer start = launcherText:IndexOf(marker)
+        if start < 0
+            output "Couldn't find which Python emsdk uses in " + launcher:GetAbsolutePath() + "."
+            return ""
+        end
+        start = start + marker:GetSize()
+        integer finish = launcherText:IndexOf("_64bit", start)
+        if finish < 0
+            output "Couldn't find which Python emsdk uses in " + launcher:GetAbsolutePath() + "."
+            return ""
+        end
+        text version = launcherText:GetSubtext(start, finish)
+
+        // The archive for this system and processor, from the manifest, such
+        // as python-3.13.3-0-macos-arm64.tar.gz.
+        Properties prop
+        text architecture = prop:GetProperty("os.arch")
+        boolean arm = architecture:Contains("aarch64") or architecture:Contains("arm64")
+        text ending = ""
+        if windows
+            if arm
+                ending = "-win-arm64.zip"
+            else
+                ending = "-win-amd64.zip"
+            end
+        else
+            if arm
+                ending = "-macos-arm64.tar.gz"
+            else
+                ending = "-macos-x86_64.tar.gz"
+            end
+        end
+        File manifest
+        manifest:SetPath(DOWNLOADS + "/emsdk/emsdk_manifest.json")
+        text manifestText = manifest:Read()
+        text archive = ""
+        integer position = manifestText:IndexOf(quote + "python-" + version + "-")
+        repeat while position >= 0 and archive = ""
+            integer closing = manifestText:IndexOf(quote, position + 1)
+            if closing < 0
+                position = -1
+            else
+                text name = manifestText:GetSubtext(position + 1, closing)
+                if name:EndsWith(ending)
+                    archive = name
+                else
+                    position = manifestText:IndexOf(quote + "python-" + version + "-", closing)
+                end
+            end
+        end
+        if archive = ""
+            output "emsdk's manifest has no Python " + version + " ending in " + ending + "."
+            return ""
+        end
+
+        File folder
+        folder:SetPath(DOWNLOADS + "/emsdk-python-" + version)
+        text found = FindPythonIn(folder, windows)
+        if found not= ""
+            return found
+        end
+
+        output "Downloading emsdk's own Python " + version + " (" + archive + ")"
+        Download(EMSDK_PACKAGES + archive, archive)
+        File downloaded
+        downloaded:SetPath(DOWNLOADS + "/" + archive)
+        if not downloaded:Exists()
+            output "emsdk's Python couldn't be downloaded."
+            return ""
+        end
+        if not folder:Exists()
+            folder:CreateDirectories()
+        end
+        File root
+        root:SetPath("..")
         Array<text> parameters
-        parameters:Add("pull")
-        pull:SetParameters(parameters)
-        pull:AddListener(me)
-        pull:Run()
+        parameters:Add("-xf")
+        parameters:Add(downloaded:GetAbsolutePath())
+        parameters:Add("-C")
+        parameters:Add(folder:GetAbsolutePath())
+        if not RunStep("Unpacking emsdk's Python", "tar", parameters, root)
+            return ""
+        end
+        found = FindPythonIn(folder, windows)
+        if found = ""
+            output "emsdk's Python was unpacked into " + folder:GetAbsolutePath() + ", but its python executable wasn't found."
+        end
+        return found
+    end
 
-        parameters:Empty()
+    /*
+        Finds the python executable in an unpacked Python: python.exe on
+        Windows or bin/python3 on a Mac, in the folder or in one folder inside
+        it. Returns its path, or "".
+    */
+    action FindPythonIn(File folder, boolean windows) returns text
+        if not folder:Exists()
+            return ""
+        end
+        text executable = "bin/python3"
+        if windows
+            executable = "python.exe"
+        end
+        File direct
+        direct:SetAbsolutePath(folder:GetAbsolutePath() + "/" + executable)
+        if direct:Exists()
+            return direct:GetAbsolutePath()
+        end
+        Array<File> listing = folder:GetDirectoryListing()
+        i = 0
+        repeat while i < listing:GetSize()
+            File inside = listing:Get(i)
+            if inside:IsDirectory()
+                File candidate
+                candidate:SetAbsolutePath(inside:GetAbsolutePath() + "/" + executable)
+                if candidate:Exists()
+                    return candidate:GetAbsolutePath()
+                end
+            end
+            i = i + 1
+        end
+        return ""
+    end
 
-        Process install
-        install:SetDirectory(emsdkFolder)
-        install:SetName("emsdk")
-        parameters:Add("install")
-        parameters:Add("latest")
-        install:SetParameters(parameters)
-        install:AddListener(me)
-        install:Run()
+    /*
+        Writes a script into quorum-natives and runs it: a .bat with cmd on
+        Windows, or a .sh with sh on a Mac. Returns true if it succeeded.
+    */
+    action RunScript(text description, text path, text contents, boolean windows) returns boolean
+        File script
+        script:SetPath("../" + path)
+        script:Write(contents)
 
-        parameters:Empty()
+        File root
+        root:SetPath("..")
+        Array<text> parameters
+        if windows
+            parameters:Add("/c")
+            parameters:Add(script:GetAbsolutePath())
+            return RunStep(description, "cmd", parameters, root)
+        else
+            parameters:Add(script:GetAbsolutePath())
+            return RunStep(description, "/bin/sh", parameters, root)
+        end
+    end
 
-        Process activate
-        activate:SetDirectory(emsdkFolder)
-        activate:SetName("emsdk")
-        parameters:Add("activate")
-        parameters:Add("latest")
-        activate:SetParameters(parameters)
-        activate:AddListener(me)
-        activate:Run()
+    /*
+        Puts double quotes around a path or argument for a script.
+    */
+    action Quote(text value) returns text
+        text quote = ""
+        quote = quote:GetDoubleQuote()
+        return quote + value + quote
+    end
 
-        parameters:Empty()
-
-        Process source
-        source:SetDirectory(emsdkFolder)
-        source:SetName("emsdk_env.bat")
-        source:AddListener(me)
-        source:Run()
+    /*
+        Copies one of the web module's files from build/web to the standard
+        library's Plugins/javascript.
+    */
+    action CopyWebFile(text name)
+        File from
+        from:SetPath("../build/web/" + name)
+        if not from:Exists()
+            output "The web build finished, but " + name + " wasn't found in build/web."
+            return now
+        end
+        if not copyToStandardLibrary
+            return now
+        end
+        File destination
+        destination:SetPath(STANDARD_LIBRARY_JAVASCRIPT)
+        if not destination:Exists()
+            output "Standard library folder not found, skipping the copy: " + STANDARD_LIBRARY_JAVASCRIPT
+            return now
+        end
+        File to
+        to:SetPath(STANDARD_LIBRARY_JAVASCRIPT + "/" + name)
+        if from:Copy(to)
+            output "Copied to " + to:GetAbsolutePath()
+        else
+            output "Could not copy to " + to:GetAbsolutePath()
+        end
     end
 
     action ResponseReceived(NetworkResponseEvent response)
