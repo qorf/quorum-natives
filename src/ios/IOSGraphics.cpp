@@ -105,40 +105,40 @@ static void releaseString( JNIEnv *env, jstring string, const char* cString )
 	env->ReleaseStringUTFChars(string, cString);
 }
 
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_init
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_init
   (JNIEnv *env, jclass)
 {
 	nativeClassInit( env );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glActiveTexture
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glActiveTexture
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glActiveTexture
   (JNIEnv *, jobject, jint texture)
 {
 	glActiveTexture( texture );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glAttachShader
  * Signature: (II)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glAttachShader
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glAttachShader
   (JNIEnv *, jobject, jint program, jint shader)
 {
 	glAttachShader( program, shader );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glBindAttribLocation
  * Signature: (IILjava/lang/String;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glBindAttribLocation
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glBindAttribLocation
   (JNIEnv *env, jobject, jint program, jint index, jstring name)
 {
 	const char* namePtr = getString( env, name );
@@ -147,110 +147,110 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glBindBuffer
  * Signature: (II)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glBindBuffer
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glBindBuffer
   (JNIEnv *env, jobject, jint target, jint buffer)
 {
 	glBindBuffer( target, buffer );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glBindFramebuffer
  * Signature: (II)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glBindFramebuffer
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glBindFramebuffer
   (JNIEnv *env, jobject, jint target, jint framebuffer)
 {
 	glBindFramebuffer( target, framebuffer );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glBindRenderbuffer
  * Signature: (II)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glBindRenderbuffer
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glBindRenderbuffer
   (JNIEnv *env, jobject, jint target, jint renderbuffer)
 {
 	glBindRenderbuffer( target, renderbuffer );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glBindTexture
  * Signature: (II)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glBindTexture
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glBindTexture
   (JNIEnv *env, jobject, jint target, jint texture)
 {
 	glBindTexture( target, texture );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glBlendColor
  * Signature: (FFFF)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glBlendColor
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glBlendColor
   (JNIEnv *env, jobject, jfloat red, jfloat green, jfloat blue, jfloat alpha)
 {
 	glBlendColor( red, green, blue, alpha );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glBlendEquation
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glBlendEquation
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glBlendEquation
   (JNIEnv *env, jobject, jint mode)
 {
 	glBlendEquation( mode );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glBlendEquationSeparate
  * Signature: (II)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glBlendEquationSeparate
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glBlendEquationSeparate
   (JNIEnv *env, jobject, jint modeRGB, jint modeAlpha)
 {
 	glBlendEquationSeparate( modeRGB, modeAlpha );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glBlendFunc
  * Signature: (II)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glBlendFunc
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glBlendFunc
   (JNIEnv *env, jobject, jint sfactor, jint dfactor)
 {
 	glBlendFunc( sfactor, dfactor );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glBlendFuncSeparate
  * Signature: (IIII)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glBlendFuncSeparate
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glBlendFuncSeparate
   (JNIEnv *env, jobject, jint srcRGB, jint dstRGB, jint srcAlpha, jint dstAlpha)
 {
 	glBlendFuncSeparate( srcRGB, dstRGB, srcAlpha, dstAlpha);
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glBufferData
  * Signature: (IILjava/nio/Buffer;I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glBufferData
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glBufferData
   (JNIEnv * env, jobject, jint target, jint size, jobject data, jint usage)
 {
 	void* dataPtr = getDirectBufferPointer( env, data );
@@ -258,11 +258,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glBufferSubData
  * Signature: (IIILjava/nio/Buffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glBufferSubData
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glBufferSubData
   (JNIEnv *env, jobject, jint target, jint offset, jint size, jobject data)
 {
 	void* dataPtr = getDirectBufferPointer( env, data );
@@ -270,88 +270,88 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glCheckFramebufferStatus
  * Signature: (I)I
  */
-JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glCheckFramebufferStatus
+JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glCheckFramebufferStatus
   (JNIEnv *env, jobject, jint target)
 {
 	return glCheckFramebufferStatus( target );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glClear
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glClear
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glClear
   (JNIEnv *env, jobject, jint mask)
 {
 	glClear( mask );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glClearColor
  * Signature: (FFFF)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glClearColor
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glClearColor
   (JNIEnv *env, jobject, jfloat red, jfloat green, jfloat blue, jfloat alpha)
 {
 	glClearColor( red, green, blue, alpha );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glClearDepthf
  * Signature: (F)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glClearDepthf
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glClearDepthf
   (JNIEnv *env, jobject, jfloat depth)
 {
 	glClearDepthf( depth );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glClearStencil
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glClearStencil
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glClearStencil
   (JNIEnv *env, jobject, jint s)
 {
 	glClearStencil( s );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glColorMask
  * Signature: (ZZZZ)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glColorMask
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glColorMask
   (JNIEnv *env, jobject, jboolean red, jboolean green, jboolean blue, jboolean alpha)
 {
 	glColorMask( red, green, blue, alpha );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glCompileShader
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glCompileShader
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glCompileShader
   (JNIEnv *env, jobject, jint shader)
 {
 	glCompileShader( shader );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glCompressedTexImage2D
  * Signature: (IIIIIIILjava/nio/Buffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glCompressedTexImage2D
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glCompressedTexImage2D
   (JNIEnv *env, jobject, jint target, jint level, jint internalFormat, jint width, jint height, jint border, jint imageSize, jobject data)
 {
 	void* dataPtr = getDirectBufferPointer( env, data );
@@ -359,11 +359,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glCompressedTexSubImage2D
  * Signature: (IIIIIIIILjava/nio/Buffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glCompressedTexSubImage2D
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glCompressedTexSubImage2D
   (JNIEnv *env, jobject, jint target, jint level, jint xoffset, jint yoffset, jint width, jint height, jint format, jint imageSize, jobject data)
 {
 	void* dataPtr = getDirectBufferPointer( env, data );
@@ -371,66 +371,66 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glCopyTexImage2D
  * Signature: (IIIIIIII)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glCopyTexImage2D
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glCopyTexImage2D
   (JNIEnv *env, jobject, jint target, jint level, jint  internalFormat, jint x, jint y, jint width, jint height, jint border)
 {
 	glCopyTexImage2D( target, level, internalFormat, x, y, width, height, border );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glCopyTexSubImage2D
  * Signature: (IIIIIIII)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glCopyTexSubImage2D
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glCopyTexSubImage2D
   (JNIEnv *env, jobject, jint target, jint level, jint xoffset, jint yoffset, jint x, jint y, jint width, jint height)
 {
 	glCopyTexSubImage2D( target, level, xoffset, yoffset, x, y, width, height );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glCreateProgram
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glCreateProgram
+JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glCreateProgram
   (JNIEnv *env, jobject)
 {
 	return glCreateProgram( );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glCreateShader
  * Signature: (I)I
  */
-JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glCreateShader
+JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glCreateShader
   (JNIEnv *env, jobject, jint type)
 {
 	return glCreateShader( type );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glCullFace
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glCullFace
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glCullFace
   (JNIEnv *env, jobject, jint mode)
 {
 	glCullFace( mode );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glDeleteBuffers
  * Signature: (ILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glDeleteBuffers
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glDeleteBuffers
   (JNIEnv *env, jobject, jint n, jobject buffers)
 {
 	void* dataPtr = getDirectBufferPointer( env, buffers );
@@ -438,11 +438,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glDeleteBuffer
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glDeleteBuffer
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glDeleteBuffer
   (JNIEnv *, jobject, jint buffer)
 {
 	GLuint b = buffer;
@@ -450,11 +450,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glDeleteFramebuffers
  * Signature: (ILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glDeleteFramebuffers
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glDeleteFramebuffers
   (JNIEnv *env, jobject, jint n, jobject framebuffers)
 {
 	void* dataPtr = getDirectBufferPointer( env, framebuffers );
@@ -462,11 +462,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glDeleteFramebuffer
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glDeleteFramebuffer
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glDeleteFramebuffer
   (JNIEnv *, jobject, jint buffer)
 {
 	GLuint b = buffer;
@@ -474,22 +474,22 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glDeleteProgram
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glDeleteProgram
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glDeleteProgram
   (JNIEnv *env, jobject, jint program)
 {
 	glDeleteProgram( program );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glDeleteRenderbuffers
  * Signature: (ILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glDeleteRenderbuffers
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glDeleteRenderbuffers
   (JNIEnv *env, jobject, jint n, jobject renderbuffers)
 {
 	void* dataPtr = getDirectBufferPointer( env, renderbuffers );
@@ -497,11 +497,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glDeleteRenderbuffer
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glDeleteRenderbuffer
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glDeleteRenderbuffer
   (JNIEnv *, jobject, jint buffer)
 {
 	GLuint b = buffer;
@@ -509,22 +509,22 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glDeleteShader
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glDeleteShader
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glDeleteShader
   (JNIEnv *env, jobject, jint shader)
 {
 	glDeleteShader( shader );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glDeleteTextures
  * Signature: (ILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glDeleteTextures
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glDeleteTextures
   (JNIEnv *env, jobject, jint n, jobject textures)
 {
 	void* dataPtr = getDirectBufferPointer( env, textures );
@@ -532,11 +532,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glDeleteTexture
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glDeleteTexture
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glDeleteTexture
   (JNIEnv *, jobject, jint buffer)
 {
 	GLuint b = buffer;
@@ -544,88 +544,88 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glDepthFunc
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glDepthFunc
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glDepthFunc
   (JNIEnv *env, jobject, jint func)
 {
 	glDepthFunc( func );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glDepthMask
  * Signature: (Z)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glDepthMask
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glDepthMask
   (JNIEnv *env, jobject, jboolean flag)
 {
 	glDepthMask( flag );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glDepthRangef
  * Signature: (FF)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glDepthRangef
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glDepthRangef
   (JNIEnv *env, jobject, jfloat zNear, jfloat zFar)
 {
 	glDepthRangef( zNear, zFar );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glDetachShader
  * Signature: (II)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glDetachShader
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glDetachShader
   (JNIEnv *env, jobject, jint program, jint shader)
 {
 	glDetachShader( program, shader );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glDisable
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glDisable
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glDisable
   (JNIEnv *env, jobject, jint cap)
 {
 	glDisable( cap );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glDisableVertexAttribArray
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glDisableVertexAttribArray
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glDisableVertexAttribArray
   (JNIEnv *env, jobject, jint index)
 {
 	glDisableVertexAttribArray( index );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glDrawArrays
  * Signature: (III)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glDrawArrays
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glDrawArrays
   (JNIEnv *env, jobject, jint mode, jint first, jint count)
 {
 	glDrawArrays( mode, first, count );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glDrawElements
  * Signature: (IIILjava/nio/Buffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glDrawElements__IIILjava_nio_Buffer_2
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glDrawElements__IIILjava_nio_Buffer_2
 (JNIEnv *env, jobject, jint mode, jint count, jint type, jobject indices)
 {
 	void* dataPtr = getDirectBufferPointer( env, indices );
@@ -633,95 +633,95 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 	glDrawElements( mode, count, type, dataPtr );
 }
 
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glDrawElements__IIII
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glDrawElements__IIII
   (JNIEnv *, jobject, jint mode, jint count, jint type, jint indices)
 {
 	glDrawElements( mode, count, type, (const void*)indices );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glEnable
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glEnable
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glEnable
   (JNIEnv *env, jobject, jint cap)
 {
 	glEnable( cap );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glEnableVertexAttribArray
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glEnableVertexAttribArray
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glEnableVertexAttribArray
   (JNIEnv *env, jobject, jint index)
 {
 	glEnableVertexAttribArray( index );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glFinish
  * Signature: ()V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glFinish
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glFinish
   (JNIEnv *env, jobject)
 {
 	glFinish();
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glFlush
  * Signature: ()V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glFlush
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glFlush
   (JNIEnv *env, jobject)
 {
 	glFlush();
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glFramebufferRenderbuffer
  * Signature: (IIII)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glFramebufferRenderbuffer
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glFramebufferRenderbuffer
   (JNIEnv *env, jobject, jint target, jint attachment, jint renderbuffertarget, jint renderbuffer)
 {
 	glFramebufferRenderbuffer( target, attachment, renderbuffertarget, renderbuffer );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glFramebufferTexture2D
  * Signature: (IIIII)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glFramebufferTexture2D
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glFramebufferTexture2D
   (JNIEnv *env, jobject, jint target, jint attachment, jint textarget, jint texture, jint level)
 {
 	glFramebufferTexture2D( target, attachment, textarget, texture, level );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glFrontFace
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glFrontFace
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glFrontFace
   (JNIEnv *env, jobject, jint mode)
 { //XXXX
 	glFrontFace( mode );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGenBuffers
  * Signature: (ILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGenBuffers
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGenBuffers
   (JNIEnv *env, jobject, jint n, jobject buffers)
 {
 	void* dataPtr = getDirectBufferPointer( env, buffers );
@@ -729,11 +729,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGenBuffer
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGenBuffer
+JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGenBuffer
   (JNIEnv *, jobject)
 {
 	GLuint result;
@@ -742,22 +742,22 @@ JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGenerateMipmap
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGenerateMipmap
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGenerateMipmap
   (JNIEnv *env, jobject, jint target)
 {
 	glGenerateMipmap( target );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGenFramebuffers
  * Signature: (ILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGenFramebuffers
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGenFramebuffers
   (JNIEnv *env, jobject, jint n, jobject framebuffers)
 {
 	void* dataPtr = getDirectBufferPointer( env, framebuffers );
@@ -765,11 +765,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGenFramebuffer
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGenFramebuffer
+JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGenFramebuffer
   (JNIEnv *, jobject)
 {
 	GLuint result;
@@ -778,11 +778,11 @@ JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGenRenderbuffers
  * Signature: (ILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGenRenderbuffers
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGenRenderbuffers
   (JNIEnv *env, jobject, jint n, jobject renderbuffers)
 {
 	void* dataPtr = getDirectBufferPointer( env, renderbuffers );
@@ -790,11 +790,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGenRenderbuffer
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGenRenderbuffer
+JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGenRenderbuffer
   (JNIEnv *, jobject)
 {
 	GLuint result;
@@ -803,11 +803,11 @@ JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGenTextures
  * Signature: (ILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGenTextures
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGenTextures
   (JNIEnv *env, jobject, jint n, jobject textures)
 {
 	void* dataPtr = getDirectBufferPointer( env, textures );
@@ -815,11 +815,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGenTexture
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGenTexture
+JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGenTexture
   (JNIEnv *, jobject)
 {
 	GLuint result;
@@ -828,11 +828,11 @@ JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetActiveAttrib
  * Signature: (IIILjava/nio/Buffer;Ljava/nio/IntBuffer;Ljava/nio/Buffer;Ljava/lang/String;)V
  */
-JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetActiveAttrib
+JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetActiveAttrib
   (JNIEnv *env, jobject, jint program, jint index, jobject size, jobject type )
 {
 	// FIXME is this wrong?
@@ -845,11 +845,11 @@ JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphic
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetActiveUniform
  * Signature: (IIILjava/nio/Buffer;Ljava/nio/IntBuffer;Ljava/nio/Buffer;Ljava/lang/String;)V
  */
-JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetActiveUniform
+JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetActiveUniform
   (JNIEnv *env, jobject, jint program, jint index, jobject size, jobject type)
 {
 	// FIXME is this wrong?
@@ -862,11 +862,11 @@ JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphic
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetAttachedShaders
  * Signature: (IILjava/nio/Buffer;Ljava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetAttachedShaders
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetAttachedShaders
   (JNIEnv *env, jobject, jint program, jint maxcount, jobject count, jobject shaders)
 {
 	void* countPtr = getDirectBufferPointer( env, count );
@@ -875,11 +875,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetAttribLocation
  * Signature: (ILjava/lang/String;)I
  */
-JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetAttribLocation
+JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetAttribLocation
   (JNIEnv *env, jobject, jint program, jstring name)
 {
 	const char* cname = getString( env, name );
@@ -889,11 +889,11 @@ JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetBooleanv
  * Signature: (ILjava/nio/Buffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetBooleanv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetBooleanv
   (JNIEnv *env, jobject, jint program, jobject params)
 {
 	void* dataPtr = getDirectBufferPointer( env, params );
@@ -901,11 +901,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetBufferParameteriv
  * Signature: (IILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetBufferParameteriv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetBufferParameteriv
   (JNIEnv *env, jobject, jint target, jint pname, jobject params)
 {
 	void* dataPtr = getDirectBufferPointer( env, params );
@@ -913,22 +913,22 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetError
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetError
+JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetError
   (JNIEnv *env, jobject)
 {
 	return glGetError();
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetFloatv
  * Signature: (ILjava/nio/FloatBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetFloatv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetFloatv
   (JNIEnv *env, jobject, jint pname, jobject params)
 {
 	void* dataPtr = getDirectBufferPointer( env, params );
@@ -936,11 +936,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetFramebufferAttachmentParameteriv
  * Signature: (IIILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetFramebufferAttachmentParameteriv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetFramebufferAttachmentParameteriv
   (JNIEnv *env, jobject, jint target, jint attachment, jint pname, jobject params)
 {
 	void* dataPtr = getDirectBufferPointer( env, params );
@@ -948,11 +948,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetIntegerv
  * Signature: (ILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetIntegerv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetIntegerv
   (JNIEnv *env, jobject, jint pname, jobject params)
 {
 	void* dataPtr = getDirectBufferPointer( env, params );
@@ -960,11 +960,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetProgramiv
  * Signature: (IILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetProgramiv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetProgramiv
   (JNIEnv *env, jobject, jint program, jint pname, jobject params)
 {
 	void *dataPtr = getDirectBufferPointer( env, params );
@@ -972,11 +972,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetProgramInfoLog
  * Signature: (IILjava/nio/Buffer;Ljava/lang/String;)V
  */
-JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetProgramInfoLog
+JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetProgramInfoLog
   (JNIEnv *env, jobject, jint program )
 {
 	char info[1024*10]; // FIXME 10k limit should suffice
@@ -986,11 +986,11 @@ JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphic
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetRenderbufferParameteriv
  * Signature: (IILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetRenderbufferParameteriv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetRenderbufferParameteriv
   (JNIEnv *env, jobject, jint target, jint pname, jobject params)
 {
 	void* dataPtr = getDirectBufferPointer( env, params );
@@ -998,11 +998,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetShaderiv
  * Signature: (IILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetShaderiv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetShaderiv
   (JNIEnv *env, jobject, jint shader, jint pname, jobject params)
 {
 	void* dataPtr = getDirectBufferPointer( env, params );
@@ -1010,11 +1010,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetShaderInfoLog
  * Signature: (IILjava/nio/Buffer;Ljava/lang/String;)V
  */
-JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetShaderInfoLog
+JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetShaderInfoLog
   (JNIEnv *env, jobject, jint shader )
 {
 	char info[1024*10]; // FIXME 10k limit should suffice
@@ -1024,11 +1024,11 @@ JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphic
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetShaderPrecisionFormat
  * Signature: (IILjava/nio/IntBuffer;Ljava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetShaderPrecisionFormat
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetShaderPrecisionFormat
   (JNIEnv *env, jobject, jint shadertype, jint precisiontype, jobject range, jobject precision)
 {
 	void* rangePtr = getDirectBufferPointer( env, range );
@@ -1037,22 +1037,22 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetShaderSource
  * Signature: (IILjava/nio/Buffer;Ljava/lang/String;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetShaderSource
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetShaderSource
   (JNIEnv *env, jobject, jint shader, jint bufsize, jobject length, jstring source)
 {
 	env->ThrowNew(UOEClass, "This method is not supported"); // FIXME won't implement this shit.
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetString
  * Signature: (I)Ljava/lang/String;
  */
-JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetString
+JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetString
   (JNIEnv *env, jobject, jint name)
 {
 	const char * chars = (const char *)glGetString((GLenum)name);
@@ -1061,11 +1061,11 @@ JNIEXPORT jstring JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphic
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetTexParameterfv
  * Signature: (IILjava/nio/FloatBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetTexParameterfv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetTexParameterfv
   (JNIEnv *env, jobject, jint target, jint pname, jobject params)
 {
 	void* dataPtr = getDirectBufferPointer( env, params );
@@ -1073,11 +1073,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetTexParameteriv
  * Signature: (IILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetTexParameteriv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetTexParameteriv
   (JNIEnv *env, jobject, jint target, jint pname, jobject params)
 {
 	void* dataPtr = getDirectBufferPointer( env, params );
@@ -1085,11 +1085,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetUniformfv
  * Signature: (IILjava/nio/FloatBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetUniformfv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetUniformfv
   (JNIEnv *env, jobject, jint program, jint location, jobject params)
 {
 	void* dataPtr = getDirectBufferPointer( env, params );
@@ -1097,11 +1097,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetUniformiv
  * Signature: (IILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetUniformiv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetUniformiv
   (JNIEnv *env, jobject, jint program, jint location, jobject params)
 {
 	void* dataPtr = getDirectBufferPointer( env, params );
@@ -1109,11 +1109,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetUniformLocation
  * Signature: (ILjava/lang/String;)I
  */
-JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetUniformLocation
+JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetUniformLocation
   (JNIEnv *env, jobject, jint program, jstring name)
 {
 	const char* cname = getString( env, name );
@@ -1123,11 +1123,11 @@ JNIEXPORT jint JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetVertexAttribfv
  * Signature: (IILjava/nio/FloatBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetVertexAttribfv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetVertexAttribfv
   (JNIEnv *env, jobject, jint index, jint pname, jobject params)
 {
 	void* dataPtr = getDirectBufferPointer( env, params );
@@ -1135,11 +1135,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetVertexAttribiv
  * Signature: (IILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetVertexAttribiv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetVertexAttribiv
   (JNIEnv *env, jobject, jint index, jint pname, jobject params)
 {
 	void* dataPtr = getDirectBufferPointer( env, params );
@@ -1147,154 +1147,154 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glGetVertexAttribPointerv
  * Signature: (IILjava/nio/Buffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glGetVertexAttribPointerv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glGetVertexAttribPointerv
   (JNIEnv *env, jobject, jint index, jint pname, jobject pointer)
 {
 	env->ThrowNew(UOEClass, "This method is not supported"); // FIXME won't implement this shit
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glHint
  * Signature: (II)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glHint
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glHint
   (JNIEnv *env, jobject, jint target, jint mode)
 {
 	glHint( target, mode );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glIsBuffer
  * Signature: (I)C
  */
-JNIEXPORT jboolean JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glIsBuffer
+JNIEXPORT jboolean JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glIsBuffer
   (JNIEnv *env, jobject, jint buffer)
 {
 	return glIsBuffer( buffer );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glIsEnabled
  * Signature: (I)C
  */
-JNIEXPORT jboolean JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glIsEnabled
+JNIEXPORT jboolean JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glIsEnabled
   (JNIEnv *env, jobject, jint cap)
 {
 	return glIsEnabled( cap );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glIsFramebuffer
  * Signature: (I)C
  */
-JNIEXPORT jboolean JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glIsFramebuffer
+JNIEXPORT jboolean JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glIsFramebuffer
   (JNIEnv *env, jobject, jint framebuffer)
 {
 	return glIsFramebuffer( framebuffer );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glIsProgram
  * Signature: (I)C
  */
-JNIEXPORT jboolean JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glIsProgram
+JNIEXPORT jboolean JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glIsProgram
   (JNIEnv *env, jobject, jint program)
 {
 	return glIsProgram( program );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glIsRenderbuffer
  * Signature: (I)C
  */
-JNIEXPORT jboolean JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glIsRenderbuffer
+JNIEXPORT jboolean JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glIsRenderbuffer
   (JNIEnv *env, jobject, jint renderbuffer)
 {
 	return glIsRenderbuffer( renderbuffer );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glIsShader
  * Signature: (I)C
  */
-JNIEXPORT jboolean JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glIsShader
+JNIEXPORT jboolean JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glIsShader
   (JNIEnv *env, jobject, jint shader)
 {
 	return glIsShader( shader );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glIsTexture
  * Signature: (I)C
  */
-JNIEXPORT jboolean JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glIsTexture
+JNIEXPORT jboolean JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glIsTexture
   (JNIEnv *env, jobject, jint texture)
 {
 	return glIsTexture( texture );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glLineWidth
  * Signature: (F)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glLineWidth
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glLineWidth
   (JNIEnv *env, jobject, jfloat width)
 {
 	glLineWidth( width );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glLinkProgram
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glLinkProgram
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glLinkProgram
   (JNIEnv *env, jobject, jint program)
 {
 	glLinkProgram( program );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glPixelStorei
  * Signature: (II)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glPixelStorei
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glPixelStorei
   (JNIEnv *env, jobject, jint pname, jint param)
 {
 	glPixelStorei( pname, param );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glPolygonOffset
  * Signature: (FF)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glPolygonOffset
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glPolygonOffset
   (JNIEnv *env, jobject, jfloat factor, jfloat units)
 {
 	glPolygonOffset( factor, units );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glReadPixels
  * Signature: (IIIIIILjava/nio/Buffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glReadPixels
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glReadPixels
   (JNIEnv *env, jobject, jint x, jint y, jint width, jint height, jint format, jint type, jobject pixels)
 {
 	void* dataPtr = getDirectBufferPointer( env, pixels );
@@ -1302,55 +1302,55 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glReleaseShaderCompiler
  * Signature: ()V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glReleaseShaderCompiler
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glReleaseShaderCompiler
   (JNIEnv *env, jobject)
 {
 	glReleaseShaderCompiler();
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glRenderbufferStorage
  * Signature: (IIII)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glRenderbufferStorage
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glRenderbufferStorage
   (JNIEnv *env, jobject, jint target, jint internalFormat, jint width, jint height)
 {
 	glRenderbufferStorage( target, internalFormat, width, height );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glSampleCoverage
  * Signature: (FZ)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glSampleCoverage
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glSampleCoverage
   (JNIEnv *env, jobject, jfloat value, jboolean inver)
 {
 	glSampleCoverage( value, inver );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glScissor
  * Signature: (IIII)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glScissor
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glScissor
   (JNIEnv *env, jobject, jint x, jint y, jint width, jint height)
 {
 	glScissor( x, y, width, height );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glShaderBinary
  * Signature: (ILjava/nio/IntBuffer;ILjava/nio/Buffer;I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glShaderBinary
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glShaderBinary
   (JNIEnv *env, jobject, jint n, jobject shaders, jint binaryformat, jobject binary, jint length)
 {
 	void* shaderPtr = getDirectBufferPointer( env, shaders );
@@ -1359,11 +1359,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glShaderSource
  * Signature: (IILjava/lang/String;Ljava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glShaderSource
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glShaderSource
   (JNIEnv *env, jobject, jint shader, jstring string )
 {
 	const char* cstring = getString( env, string );
@@ -1372,77 +1372,77 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glStencilFunc
  * Signature: (III)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glStencilFunc
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glStencilFunc
   (JNIEnv *env, jobject, jint func, jint ref, jint mask)
 {
 	glStencilFunc( func, ref, mask );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glStencilFuncSeparate
  * Signature: (IIII)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glStencilFuncSeparate
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glStencilFuncSeparate
   (JNIEnv *env, jobject, jint face, jint func, jint ref, jint mask)
 {
 	glStencilFuncSeparate( face, func, ref, mask );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glStencilMask
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glStencilMask
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glStencilMask
   (JNIEnv *env, jobject, jint mask)
 {
 	glStencilMask( mask );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glStencilMaskSeparate
  * Signature: (II)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glStencilMaskSeparate
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glStencilMaskSeparate
   (JNIEnv *env, jobject, jint face, jint mask)
 {
 	glStencilMaskSeparate( face, mask );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glStencilOp
  * Signature: (III)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glStencilOp
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glStencilOp
   (JNIEnv *env, jobject, jint fail, jint zFail, jint zpass)
 {
 	glStencilOp( fail, zFail, zpass );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glStencilOpSeparate
  * Signature: (IIII)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glStencilOpSeparate
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glStencilOpSeparate
   (JNIEnv *env, jobject, jint face, jint fail, jint zFail, jint zPass)
 {
 	glStencilOpSeparate( face, fail, zFail, zPass );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glTexImage2D
  * Signature: (IIIIIIIILjava/nio/Buffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glTexImage2D
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glTexImage2D
   (JNIEnv *env, jobject, jint target, jint level, jint internalformat, jint width, jint height, jint border, jint format, jint type, jobject pixels)
 {
 	void* dataPtr = getDirectBufferPointer( env, pixels );
@@ -1450,22 +1450,22 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glTexParameterf
  * Signature: (IIF)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glTexParameterf
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glTexParameterf
   (JNIEnv *env, jobject, jint target, jint pname, jfloat param)
 {
 	glTexParameterf( target, pname, param );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glTexParameterfv
  * Signature: (IILjava/nio/FloatBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glTexParameterfv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glTexParameterfv
   (JNIEnv *env, jobject, jint target, jint pname, jobject params)
 {
 	void* dataPtr = getDirectBufferPointer( env, params );
@@ -1473,22 +1473,22 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glTexParameteri
  * Signature: (III)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glTexParameteri
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glTexParameteri
   (JNIEnv *env, jobject, jint target, jint pname, jint param)
 {
 	glTexParameteri( target, pname, param );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glTexParameteriv
  * Signature: (IILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glTexParameteriv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glTexParameteriv
   (JNIEnv *env, jobject, jint target, jint pname, jobject params)
 {
 	void* dataPtr = getDirectBufferPointer( env, params );
@@ -1496,11 +1496,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glTexSubImage2D
  * Signature: (IIIIIIIILjava/nio/Buffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glTexSubImage2D
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glTexSubImage2D
   (JNIEnv *env, jobject, jint target, jint level, jint xoffset, jint yoffset, jint width, jint height, jint format, jint type, jobject pixels)
 {
 	void* dataPtr = getDirectBufferPointer( env, pixels );
@@ -1508,22 +1508,22 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform1f
  * Signature: (IF)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform1f
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform1f
   (JNIEnv *env, jobject, jint location, jfloat x)
 {
 	glUniform1f( location, x );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform1fv
  * Signature: (IILjava/nio/FloatBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform1fv__IILjava_nio_FloatBuffer_2
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform1fv__IILjava_nio_FloatBuffer_2
   (JNIEnv *env, jobject, jint location, jint count, jobject v)
 {
 	void* dataPtr = getDirectBufferPointer( env, v );
@@ -1531,11 +1531,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform1fv
  * Signature: (II[FI)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform1fv__II_3FI
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform1fv__II_3FI
   (JNIEnv *env, jobject, jint location, jint count, jfloatArray value, jint offset)
 {
 	float* v = (float*)env->GetPrimitiveArrayCritical(value, 0);
@@ -1544,22 +1544,22 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform1i
  * Signature: (II)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform1i
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform1i
   (JNIEnv *env, jobject, jint location, jint x)
 {
 	glUniform1i( location, x );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform1iv
  * Signature: (IILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform1iv__IILjava_nio_IntBuffer_2
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform1iv__IILjava_nio_IntBuffer_2
   (JNIEnv *env, jobject, jint location, jint count, jobject v)
 {
 	void* dataPtr = getDirectBufferPointer( env, v );
@@ -1567,11 +1567,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform1iv
  * Signature: (II[II)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform1iv__II_3II
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform1iv__II_3II
 	(JNIEnv *env, jobject, jint location, jint count, jintArray value, jint offset)
 {
 	int* v = (int*)env->GetPrimitiveArrayCritical(value, 0);
@@ -1580,22 +1580,22 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform2f
  * Signature: (IFF)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform2f
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform2f
   (JNIEnv *env, jobject, jint location, jfloat x, jfloat y)
 {
 	glUniform2f( location, x, y );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform2fv
  * Signature: (IILjava/nio/FloatBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform2fv__IILjava_nio_FloatBuffer_2
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform2fv__IILjava_nio_FloatBuffer_2
   (JNIEnv *env, jobject, jint location, jint count, jobject v)
 {
 	void* dataPtr = getDirectBufferPointer( env, v );
@@ -1603,11 +1603,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform2fv
  * Signature: (II[FI)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform2fv__II_3FI
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform2fv__II_3FI
 	(JNIEnv *env, jobject, jint location, jint count, jfloatArray value, jint offset)
 {
 	float* v = (float*)env->GetPrimitiveArrayCritical(value, 0);
@@ -1616,22 +1616,22 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform2i
  * Signature: (III)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform2i
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform2i
   (JNIEnv *env, jobject, jint location, jint x, jint y)
 {
 	glUniform2i( location, x, y );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform2iv
  * Signature: (IILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform2iv__IILjava_nio_IntBuffer_2
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform2iv__IILjava_nio_IntBuffer_2
   (JNIEnv *env, jobject, jint location, jint count, jobject v)
 {
 	void* dataPtr = getDirectBufferPointer( env, v );
@@ -1639,11 +1639,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform2iv
  * Signature: (II[II)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform2iv__II_3II
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform2iv__II_3II
 	(JNIEnv *env, jobject, jint location, jint count, jintArray value, jint offset)
 {
 	int* v = (int*)env->GetPrimitiveArrayCritical(value, 0);
@@ -1652,22 +1652,22 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform3f
  * Signature: (IFFF)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform3f
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform3f
   (JNIEnv *env, jobject, jint location, jfloat x, jfloat y, jfloat z)
 {
 	glUniform3f( location, x, y, z );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform3fv
  * Signature: (IILjava/nio/FloatBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform3fv__IILjava_nio_FloatBuffer_2
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform3fv__IILjava_nio_FloatBuffer_2
   (JNIEnv *env, jobject, jint location, jint count, jobject v)
 {
 	void* dataPtr = getDirectBufferPointer( env, v );
@@ -1675,11 +1675,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform3fv
  * Signature: (II[FI)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform3fv__II_3FI
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform3fv__II_3FI
 	(JNIEnv *env, jobject, jint location, jint count, jfloatArray value, jint offset)
 {
 	float* v = (float*)env->GetPrimitiveArrayCritical(value, 0);
@@ -1688,22 +1688,22 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform3i
  * Signature: (IIII)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform3i
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform3i
   (JNIEnv *env, jobject, jint location, jint x, jint y, jint z)
 {
 	glUniform3i( location, x, y, z );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform3iv
  * Signature: (IILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform3iv__IILjava_nio_IntBuffer_2
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform3iv__IILjava_nio_IntBuffer_2
   (JNIEnv *env, jobject, jint location, jint count, jobject v)
 {
 	void* dataPtr = getDirectBufferPointer( env, v );
@@ -1711,11 +1711,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform3iv
  * Signature: (II[II)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform3iv__II_3II
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform3iv__II_3II
 	(JNIEnv *env, jobject, jint location, jint count, jintArray value, jint offset)
 {
 	int* v = (int*)env->GetPrimitiveArrayCritical(value, 0);
@@ -1724,22 +1724,22 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform4f
  * Signature: (IFFFF)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform4f
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform4f
   (JNIEnv *env, jobject, jint location, jfloat x, jfloat y, jfloat z, jfloat w)
 {
 	glUniform4f( location, x, y, z, w );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform4fv
  * Signature: (IILjava/nio/FloatBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform4fv__IILjava_nio_FloatBuffer_2
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform4fv__IILjava_nio_FloatBuffer_2
   (JNIEnv *env, jobject, jint location, jint count, jobject v)
 {
 	void* dataPtr = getDirectBufferPointer( env, v );
@@ -1747,11 +1747,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform4fv
  * Signature: (II[FI)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform4fv__II_3FI
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform4fv__II_3FI
 	(JNIEnv *env, jobject, jint location, jint count, jfloatArray value, jint offset)
 {
 	float* v = (float*)env->GetPrimitiveArrayCritical(value, 0);
@@ -1760,22 +1760,22 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform4i
  * Signature: (IIIII)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform4i
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform4i
   (JNIEnv *env, jobject, jint location, jint x, jint y, jint z, jint w)
 {
 	glUniform4i( location, x, y, z, w );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform4iv
  * Signature: (IILjava/nio/IntBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform4iv__IILjava_nio_IntBuffer_2
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform4iv__IILjava_nio_IntBuffer_2
   (JNIEnv *env, jobject, jint location, jint count, jobject v)
 {
 	void* dataPtr = getDirectBufferPointer( env, v );
@@ -1783,11 +1783,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniform4iv
  * Signature: (II[II)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniform4iv__II_3II
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniform4iv__II_3II
 	(JNIEnv *env, jobject, jint location, jint count, jintArray value, jint offset)
 {
 	int* v = (int*)env->GetPrimitiveArrayCritical(value, 0);
@@ -1796,11 +1796,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniformMatrix2fv
  * Signature: (IIZLjava/nio/FloatBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniformMatrix2fv__IIZLjava_nio_FloatBuffer_2
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniformMatrix2fv__IIZLjava_nio_FloatBuffer_2
   (JNIEnv *env, jobject, jint location, jint count, jboolean transpose, jobject value)
 {
 	void* dataPtr = getDirectBufferPointer( env, value );
@@ -1808,11 +1808,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniformMatrix2fv
  * Signature: (IIZ[FI)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniformMatrix2fv__IIZ_3FI
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniformMatrix2fv__IIZ_3FI
   (JNIEnv *env, jobject, jint location, jint count, jboolean transpose, jfloatArray value, jint offset)
 {
 	float* v = (float*)env->GetPrimitiveArrayCritical(value, 0);
@@ -1821,11 +1821,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniformMatrix3fv
  * Signature: (IIZLjava/nio/FloatBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniformMatrix3fv__IIZLjava_nio_FloatBuffer_2
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniformMatrix3fv__IIZLjava_nio_FloatBuffer_2
   (JNIEnv *env, jobject, jint location, jint count, jboolean transpose, jobject value)
 {
 	void* dataPtr = getDirectBufferPointer( env, value );
@@ -1833,11 +1833,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniformMatrix3fv
  * Signature: (IIZ[FI)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniformMatrix3fv__IIZ_3FI
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniformMatrix3fv__IIZ_3FI
 	(JNIEnv *env, jobject, jint location, jint count, jboolean transpose, jfloatArray value, jint offset)
 {
 	float* v = (float*)env->GetPrimitiveArrayCritical(value, 0);
@@ -1846,11 +1846,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniformMatrix4fv
  * Signature: (IIZLjava/nio/FloatBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniformMatrix4fv__IIZLjava_nio_FloatBuffer_2
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniformMatrix4fv__IIZLjava_nio_FloatBuffer_2
   (JNIEnv *env, jobject, jint location, jint count, jboolean transpose, jobject value)
 {
 	void* dataPtr = getDirectBufferPointer( env, value );
@@ -1858,11 +1858,11 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUniformMatrix4fv
  * Signature: (IIZ[FI)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUniformMatrix4fv__IIZ_3FI
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUniformMatrix4fv__IIZ_3FI
 	(JNIEnv *env, jobject, jint location, jint count, jboolean transpose, jfloatArray value, jint offset)
 {
 	float* v = (float*)env->GetPrimitiveArrayCritical(value, 0);
@@ -1871,44 +1871,44 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glUseProgram
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glUseProgram
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glUseProgram
   (JNIEnv *env, jobject, jint program)
 {
 	glUseProgram( program );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glValidateProgram
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glValidateProgram
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glValidateProgram
   (JNIEnv *env, jobject, jint program)
 {
 	glValidateProgram( program );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glVertexAttrib1f
  * Signature: (IF)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glVertexAttrib1f
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glVertexAttrib1f
   (JNIEnv *env, jobject, jint indx, jfloat x)
 {
 	glVertexAttrib1f( indx, x );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glVertexAttrib1fv
  * Signature: (ILjava/nio/FloatBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glVertexAttrib1fv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glVertexAttrib1fv
   (JNIEnv *env, jobject, jint indx, jobject values)
 {
 	void* dataPtr = getDirectBufferPointer( env, values );
@@ -1916,22 +1916,22 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glVertexAttrib2f
  * Signature: (IFF)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glVertexAttrib2f
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glVertexAttrib2f
   (JNIEnv *env, jobject, jint indx, jfloat x, jfloat y)
 {
 	glVertexAttrib2f( indx, x, y );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glVertexAttrib2fv
  * Signature: (ILjava/nio/FloatBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glVertexAttrib2fv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glVertexAttrib2fv
   (JNIEnv *env, jobject, jint indx, jobject values)
 {
 	void* dataPtr = getDirectBufferPointer( env, values );
@@ -1939,22 +1939,22 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glVertexAttrib3f
  * Signature: (IFFF)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glVertexAttrib3f
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glVertexAttrib3f
   (JNIEnv *env, jobject, jint indx, jfloat x, jfloat y, jfloat z)
 {
 	glVertexAttrib3f( indx, x, y, z );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glVertexAttrib3fv
  * Signature: (ILjava/nio/FloatBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glVertexAttrib3fv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glVertexAttrib3fv
   (JNIEnv *env, jobject, jint indx, jobject values)
 {
 	void* dataPtr = getDirectBufferPointer( env, values );
@@ -1962,22 +1962,22 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glVertexAttrib4f
  * Signature: (IFFFF)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glVertexAttrib4f
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glVertexAttrib4f
   (JNIEnv *env, jobject, jint indx, jfloat x, jfloat y, jfloat z, jfloat w)
 {
 	glVertexAttrib4f( indx, x, y, z, w );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glVertexAttrib4fv
  * Signature: (ILjava/nio/FloatBuffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glVertexAttrib4fv
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glVertexAttrib4fv
   (JNIEnv *env, jobject, jint indx, jobject values)
 {
 	void* dataPtr = getDirectBufferPointer( env, values );
@@ -1985,49 +1985,49 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glVertexAttribPointer
  * Signature: (IIIZILjava/nio/Buffer;)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glVertexAttribPointer__IIIZILjava_nio_Buffer_2
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glVertexAttribPointer__IIIZILjava_nio_Buffer_2
   (JNIEnv *env, jobject, jint indx, jint size, jint type, jboolean normalized, jint stride, jobject ptr)
 {
 	void* dataPtr = getDirectBufferPointer( env, ptr );
 	glVertexAttribPointer( indx, size, type, normalized, stride, dataPtr );
 }
 
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glVertexAttribPointer__IIIZII
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glVertexAttribPointer__IIIZII
   (JNIEnv *, jobject, jint indx, jint size, jint type, jboolean normalized, jint stride, jint ptr)
 {
 	glVertexAttribPointer( indx, size, type, normalized, stride, (const void*)ptr );
 }
 
 /*
- * Class:     plugins_quorum_Libraries_Game_Graphics_IOSGraphics
+ * Class:     plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL
  * Method:    glViewportJni
  * Signature: (IIII)V
  */
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glViewportJni
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_glViewportJni
   (JNIEnv *env, jobject, jint x, jint y, jint width, jint height)
 {
 	glViewport( x, y, width, height );
 }
 
-JNIEXPORT int JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_CreateVertexArray
+JNIEXPORT int JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_CreateVertexArray
 (JNIEnv *env, jobject obj) {
     GLuint buffer = 0;
     glGenVertexArrays(1, &buffer);
     return buffer;
 }
 
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_DeleteVertexArray
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_DeleteVertexArray
   (JNIEnv *env, jobject obj, jint vao)
 {
     GLuint array = vao;
     glDeleteVertexArrays(1, &array);
 }
 
-JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_BindVertexArray
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_OpenGL_IOSOpenGL_BindVertexArray
   (JNIEnv *env, jobject obj, jint array)
 {
     glBindVertexArray(array);
