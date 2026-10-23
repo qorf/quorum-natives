@@ -42,8 +42,9 @@ use Libraries.System.Properties
 
     Mac:
 
-    One CMake build compiles FreeType and the natives for both arm64 and x86_64. lipo then splits the result into the
-    two files Game.java loads, libGameEngineCPluginsArm.so and libGameEngineCPlugins.so.
+    One CMake build compiles FreeType and the natives for both arm64 and x86_64 into one universal file, Mac.so, which
+    Game.java loads. macOS picks the half that matches the running Java: arm64 natively on Apple Silicon, x86_64 on
+    Intel Macs or under Rosetta.
 
     iOS:
 
@@ -116,8 +117,7 @@ class Main is NetworkRequestListener, ProcessListener
     constant text FREETYPE = "https://download.savannah.gnu.org/releases/freetype/freetype-2.13.0.tar.gz"
     constant text FREETYPE_NAME = "freetype-2.13.0.tar.gz"
 
-    constant text MAC_ARM_NAME = "libGameEngineCPluginsArm.so"
-    constant text MAC_X86_NAME = "libGameEngineCPlugins.so"
+    constant text MAC_NAME = "Mac.so"
     constant text WINDOWS_NAME = "libGameEngineCPlugins64.dll"
 
     // Where Windows tools are usually installed. Forward slashes work on Windows.
@@ -291,9 +291,9 @@ class Main is NetworkRequestListener, ProcessListener
     end
 
     /*
-        Builds both Mac architectures in one CMake build (FreeType included),
-        splits them into the two files Game.java loads, and copies them to the
-        standard library.
+        Builds both Mac architectures in one CMake build (FreeType included)
+        into one universal file, Mac.so, checks that it has both, and copies
+        it to the standard library.
     */
     action DoMac returns boolean
         output "=== Mac ==="
@@ -304,34 +304,31 @@ class Main is NetworkRequestListener, ProcessListener
             return false
         end
 
-        File thinFolder
-        thinFolder:SetPath("../build/mac/thin")
-        if not thinFolder:Exists()
-            thinFolder:CreateDirectories()
-        end
-        if not Thin("arm64", MAC_ARM_NAME)
-            return false
-        end
-        if not Thin("x86_64", MAC_X86_NAME)
+        if not VerifyMacArchitectures()
             return false
         end
 
-        CopyToStandardLibrary("../build/mac/thin/" + MAC_ARM_NAME, DESKTOP_FOLDER, MAC_ARM_NAME)
-        CopyToStandardLibrary("../build/mac/thin/" + MAC_X86_NAME, DESKTOP_FOLDER, MAC_X86_NAME)
+        CopyToStandardLibrary("../build/mac/" + MAC_NAME, DESKTOP_FOLDER, MAC_NAME)
         return true
     end
 
-    /* Makes a one-architecture copy of the universal Mac library. */
-    action Thin(text architecture, text name) returns boolean
+    /*
+        Fails unless Mac.so has both arm64 and x86_64 in it. Each architecture
+        is checked on its own: Xcode 27's lipo rejects -verify_arch with more
+        than one.
+    */
+    action VerifyMacArchitectures returns boolean
+        return VerifyMacArchitecture("arm64") and VerifyMacArchitecture("x86_64")
+    end
+
+    action VerifyMacArchitecture(text architecture) returns boolean
         File root
         root:SetPath("..")
         Array<text> parameters
-        parameters:Add("build/mac/libGameEngineCPlugins.so")
-        parameters:Add("-thin")
+        parameters:Add("build/mac/" + MAC_NAME)
+        parameters:Add("-verify_arch")
         parameters:Add(architecture)
-        parameters:Add("-output")
-        parameters:Add("build/mac/thin/" + name)
-        return RunStep("Making the " + architecture + " library", "lipo", parameters, root)
+        return RunStep("Checking that " + MAC_NAME + " has " + architecture, "lipo", parameters, root)
     end
 
     /*

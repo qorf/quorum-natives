@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.18)
 
 # Builds the natives for one platform per build folder:
 #   Mac:     cmake -S . -B build/mac
-#            (both architectures at once, libGameEngineCPlugins.so)
+#            (Mac.so, one universal file with both architectures)
 #   Windows: cmake -S . -B build/windows -DCMAKE_TOOLCHAIN_FILE=toolchains/mingw-w64.cmake
 #            (cross-compiled on a Mac, libGameEngineCPlugins64.dll)
 #            On Windows itself, with Visual Studio's C++ tools:
@@ -131,7 +131,7 @@ target_include_directories(GameEngineCPlugins PRIVATE
 target_link_libraries(GameEngineCPlugins PRIVATE freetype)
 target_compile_options(GameEngineCPlugins PRIVATE -O2)
 
-# The names Quorum loads: libGameEngineCPlugins.so on Mac,
+# The names Quorum loads: Mac.so on Mac (universal, arm64 and x86_64),
 # libGameEngineCPlugins64.dll on Windows, and liballnatives.a on iOS.
 if (QUORUM_IOS)
     # A static library doesn't include the libraries it links to, so
@@ -142,7 +142,7 @@ if (QUORUM_IOS)
                 "$<TARGET_FILE:GameEngineCPlugins>" "$<TARGET_FILE:freetype>"
         COMMENT "Merging FreeType into liballnatives.a")
 elseif (APPLE)
-    set_target_properties(GameEngineCPlugins PROPERTIES PREFIX "lib" SUFFIX ".so")
+    set_target_properties(GameEngineCPlugins PROPERTIES PREFIX "" OUTPUT_NAME "Mac" SUFFIX ".so")
 elseif (WIN32)
     set_target_properties(GameEngineCPlugins PROPERTIES PREFIX "lib" OUTPUT_NAME "GameEngineCPlugins64")
     if (MINGW)

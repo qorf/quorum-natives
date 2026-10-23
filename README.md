@@ -4,8 +4,7 @@ The C and C++ native libraries for the Quorum programming language's game engine
 
 | Platform | File | Where it goes in `Native/` |
 |---|---|---|
-| Mac, Apple Silicon | `libGameEngineCPluginsArm.so` | `Libraries.Game` |
-| Mac, Intel | `libGameEngineCPlugins.so` | `Libraries.Game` |
+| Mac, Apple Silicon and Intel (one universal file) | `Mac.so` | `Libraries.Game` |
 | Windows, 64-bit | `libGameEngineCPlugins64.dll` | `Libraries.Game` |
 | iPhone and iPad | `ios.a` | `mobile` |
 | iOS Simulator | `iosSimulator.a` | `mobile` |
@@ -35,7 +34,8 @@ AutoBuild installs **CMake** and **MinGW-w64** (the Windows cross-compiler) with
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `buildMac` | `true` | Builds the Mac libraries (Apple Silicon and Intel). |
+| `buildMac` | `true` | Builds the Mac library, `Mac.so`, for Apple Silicon and Intel. |
+| `macVersion` | `"11.0"` | The oldest macOS the library loads on. |
 | `buildWindows` | `true` | Builds the Windows DLL: cross-compiled on a Mac, or built directly on Windows. |
 | `buildIOS` | `true` | Builds the iOS device and simulator libraries. |
 | `iosVersion` | `"14.0"` | The oldest iOS the libraries support. |
@@ -52,14 +52,14 @@ Everything is built from the `CMakeLists.txt` in the root folder, one build fold
 
 | Platform | Folder | How |
 |---|---|---|
-| Mac | `build/mac` | One build for both `arm64` and `x86_64`, with FreeType built in. `lipo -thin` then splits it into the two files `Game.java` loads (`build/mac/thin`). |
+| Mac | `build/mac` | One build for both `arm64` and `x86_64`, with FreeType built in, giving one universal file, `Mac.so`. `lipo -verify_arch` checks it has both. macOS loads the half that matches the running Java. |
 | Windows | `build/windows` | Cross-compiled with MinGW-w64 (`toolchains/mingw-w64.cmake`), with the GCC runtime linked in. |
 | iOS | `build/ios-device`, `build/ios-simulator` | `CMAKE_SYSTEM_NAME=iOS`. Static libraries with the natives, `src/ios`, and FreeType merged in (`liballnatives.a`). |
 
 The same builds from Terminal, from the root of `quorum-natives`:
 
 ```bash
-cmake -S . -B build/mac && cmake --build build/mac --parallel
+cmake -S . -B build/mac -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 && cmake --build build/mac --parallel
 ```
 
 ```bash
