@@ -18,18 +18,24 @@ use Libraries.System.Properties
 
     On a Mac, one run builds the Mac, Windows and iOS natives (see buildMac, buildWindows and buildIOS) with the
     CMakeLists.txt in the root folder, each in its own folder under build, and copies them into the standard library.
-    Homebrew is used to install CMake and MinGW-w64 if they are missing. Homebrew itself, and the Xcode command
-    line tools, must be installed by hand, since both ask for an administrator password.
+    Homebrew is used to install CMake, and the tools for Windows (llvm, lld, xwin, ninja), if they are missing.
+    Homebrew itself, and the Xcode command line tools, must be installed by hand, since both ask for an administrator
+    password.
 
     Windows:
 
-    On a Mac, the DLL is cross-compiled with MinGW-w64 (toolchains/mingw-w64.cmake), using the downloaded Windows JDK's
-    JNI headers. It can't be run on a Mac, so test it on Windows.
+    One library, Windows.dll, holds the game natives, accessibility (UI Automation, src/windows/accessibility) and speech
+    (SAPI, JAWS and NVDA, src/windows/speech). NVDA's client DLL is LGPL, so it's downloaded and copied next to it,
+    unchanged, with its license; Windows.dll loads it when NVDA is used. WIL (for accessibility) is downloaded too.
 
-    On Windows, only the DLL can be built (DoWindowsHost); Mac and iOS need Apple's compilers and SDKs. It uses the
-    same CMakeLists.txt, with Visual Studio's C++ tools if installed (found with vswhere), or else MinGW from MSYS2.
-    CMake is installed with winget if it's missing; the Visual Studio Build Tools only if installVisualStudioBuildTools
-    is true.
+    On a Mac, Windows.dll is cross-compiled with clang-cl and lld-link (toolchains/clang-cl-xwin.cmake), using
+    Microsoft's Windows SDK and C runtime from xwin and the downloaded Windows JDK's JNI headers. xwin needs
+    Microsoft's license accepted (acceptMicrosoftLicense). xwin has no ATL, so the speech code uses the small
+    stand-ins in src/windows/speech/atl. It can't be run on a Mac, so test it on Windows.
+
+    On Windows, only Windows.dll can be built (DoWindowsHost); Mac and iOS need Apple's compilers and SDKs. It uses the
+    same CMakeLists.txt, with Visual Studio's C++ tools and ATL (found with vswhere). CMake is installed with winget if
+    it's missing; the Visual Studio Build Tools only if installVisualStudioBuildTools is true.
 
     Web:
 
@@ -118,7 +124,28 @@ class Main is NetworkRequestListener, ProcessListener
     constant text FREETYPE_NAME = "freetype-2.13.0.tar.gz"
 
     constant text MAC_NAME = "Mac.so"
-    constant text WINDOWS_NAME = "libGameEngineCPlugins64.dll"
+    // One Windows library: the game natives, accessibility and speech.
+    constant text WINDOWS_NAME = "Windows.dll"
+
+    // Microsoft's Windows Implementation Library, which the accessibility
+    // code uses. Pinned; MIT licensed.
+    constant text WIL_ZIP = "https://github.com/microsoft/wil/archive/refs/tags/v1.0.260126.7.zip"
+    constant text WIL_ZIP_NAME = "wil-v1.0.260126.7.zip"
+    constant text WIL_FOLDER = "wil-1.0.260126.7"
+
+    // NVDA's controller client. It's LGPL 2.1, so it ships unchanged as its
+    // own file next to Windows.dll, with its license; Windows.dll loads it
+    // when NVDA is used. Use the stable 2026.3 release once it's out.
+    constant text NVDA_CLIENT_ZIP = "https://download.nvaccess.org/releases/2026.3rc1/nvda_2026.3rc1_controllerClient.zip"
+    constant text NVDA_CLIENT_ZIP_NAME = "nvda_2026.3rc1_controllerClient.zip"
+    constant text NVDA_NAME = "nvdaControllerClient.dll"
+    constant text NVDA_LICENSE_NAME = "nvdaControllerClient-LICENSE.txt"
+    constant text SPEECH_FOLDER = "/Libraries.Sound.Speech"
+
+    // Homebrew's llvm (clang-cl) is keg-only: it isn't linked into
+    // Homebrew's bin folder, so it's looked for here.
+    constant text LLVM_FOLDER_ARM = "/opt/homebrew/opt/llvm/bin/"
+    constant text LLVM_FOLDER_INTEL = "/usr/local/opt/llvm/bin/"
 
     // Where Windows tools are usually installed. Forward slashes work on Windows.
     constant text WINDOWS_CMAKE = "C:/Program Files/CMake/bin/cmake.exe"
@@ -137,15 +164,22 @@ class Main is NetworkRequestListener, ProcessListener
     boolean copyToStandardLibrary = true
 
     // Which platforms a run on a Mac builds. Windows is cross-compiled
-    // with MinGW-w64, and iOS needs the full Xcode, not only its command line tools.
+    // with clang-cl, and iOS needs the full Xcode, not only its command line tools.
     boolean buildMac = true
     boolean buildWindows = true
     boolean buildIOS = true
 
+    // Building Windows.dll on a Mac needs Microsoft's Windows SDK and C
+    // runtime, which xwin downloads under Microsoft's license (the files go
+    // in download/xwin and are never committed). AutoBuild can't answer
+    // xwin's license question, so either set this to true to accept the
+    // license, or run xwin once by hand in Terminal (README.md, or the
+    // message AutoBuild prints).
+    boolean acceptMicrosoftLicense = false
+
     // On Windows, CMake is installed with winget if it's missing. Visual
-    // Studio's C++ Build Tools are several gigabytes and need an
+    // Studio's C++ Build Tools (with ATL) are several gigabytes and need an
     // administrator's permission, so they're only installed if this is true.
-    // Without them, an installed MinGW (MSYS2) is used instead.
     boolean installVisualStudioBuildTools = false
     text iosVersion = "14.0"
 
@@ -172,6 +206,9 @@ class Main is NetworkRequestListener, ProcessListener
     text brew = ""
     text cmake = ""
 
+    // Set when the Windows build is skipped rather than failed, with the reason.
+    text windowsSkipped = ""
+
     // One line per platform, printed at the end.
     Array<text> summary
 
@@ -188,6 +225,14 @@ class Main is NetworkRequestListener, ProcessListener
             output "Downloading the Windows JDK"
             Download(WINDOWS_JDK, WINDOWS_JDK_NAME)
             Deflate(WINDOWS_JDK_NAME, DOWNLOADS + "/jdk-11.0.15+10", DOWNLOADS + "/jdk/windows/x64/jdk-11.0.15+10")
+
+            output "Downloading WIL"
+            Download(WIL_ZIP, WIL_ZIP_NAME)
+            Deflate(WIL_ZIP_NAME, DOWNLOADS + "/" + WIL_FOLDER, DOWNLOADS + "/wil")
+
+            output "Downloading NVDA's controller client"
+            Download(NVDA_CLIENT_ZIP, NVDA_CLIENT_ZIP_NAME)
+            ExtractNvdaClient()
         end
 
         DoPlatformBuild()
@@ -263,6 +308,8 @@ class Main is NetworkRequestListener, ProcessListener
         if buildWindows
             if DoWindowsOnMac()
                 summary:Add("Windows: built (test it on Windows before shipping)")
+            elseif windowsSkipped not= ""
+                summary:Add("Windows: skipped. " + windowsSkipped)
             else
                 summary:Add("Windows: FAILED (see above)")
             end
@@ -332,27 +379,233 @@ class Main is NetworkRequestListener, ProcessListener
     end
 
     /*
-        Cross-compiles the Windows DLL with MinGW-w64, installing it with
-        Homebrew if needed. The DLL can't be run on a Mac, so test it on
+        Cross-compiles Windows.dll (the game natives, accessibility and
+        speech) with clang-cl and lld-link from Homebrew's llvm and lld,
+        using Microsoft's Windows SDK and C runtime from xwin
+        (toolchains/clang-cl-xwin.cmake). The tools are installed with
+        Homebrew if they're missing. NVDA's client DLL and its license are
+        copied next to it. The DLL can't be run on a Mac, so test it on
         Windows before shipping it.
+
+        It builds in build/windows-clang: build/windows may hold an older
+        MinGW build, and CMake can't switch compilers in a folder.
     */
     action DoWindowsOnMac returns boolean
         output "=== Windows ==="
-        text compiler = FindTool("x86_64-w64-mingw32-gcc", "mingw-w64")
-        if compiler = ""
+        if FindClangCl() = ""
+            return false
+        end
+        if FindTool("lld-link", "lld") = ""
+            return false
+        end
+        text ninja = FindTool("ninja", "ninja")
+        if ninja = ""
+            return false
+        end
+        if not GetWindowsSdk()
             return false
         end
 
         File toolchain
-        toolchain:SetPath("../toolchains/mingw-w64.cmake")
+        toolchain:SetPath("../toolchains/clang-cl-xwin.cmake")
         Array<text> options
+        options:Add("-G")
+        options:Add("Ninja")
+        options:Add("-DCMAKE_MAKE_PROGRAM=" + ninja)
         options:Add("-DCMAKE_TOOLCHAIN_FILE=" + toolchain:GetAbsolutePath())
-        if not BuildWithCMake("build/windows", options)
+        if not BuildWithCMake("build/windows-clang", options)
             return false
         end
 
-        CopyToStandardLibrary("../build/windows/" + WINDOWS_NAME, DESKTOP_FOLDER, WINDOWS_NAME)
+        CheckWindowsLibrary("build/windows-clang/" + WINDOWS_NAME)
+        CopyToStandardLibrary("../build/windows-clang/" + WINDOWS_NAME, DESKTOP_FOLDER, WINDOWS_NAME)
+        CopyNvdaClient()
         return true
+    end
+
+    /*
+        Finds Homebrew's clang-cl, installing llvm if it's missing. Returns
+        its path, or "".
+    */
+    action FindClangCl returns text
+        text found = FindClangClInLlvm()
+        if found not= ""
+            return found
+        end
+        if brew = ""
+            output "clang-cl was not found, and Homebrew isn't there to install it (brew install llvm)."
+            return ""
+        end
+
+        File root
+        root:SetPath("..")
+        Array<text> parameters
+        parameters:Add("install")
+        parameters:Add("llvm")
+        if not RunStep("Installing llvm with Homebrew, for clang-cl (this can take a few minutes)", brew, parameters, root)
+            return ""
+        end
+        found = FindClangClInLlvm()
+        if found = ""
+            output "llvm was installed, but clang-cl still wasn't found."
+        end
+        return found
+    end
+
+    action FindClangClInLlvm returns text
+        File candidate
+        candidate:SetAbsolutePath(LLVM_FOLDER_ARM + "clang-cl")
+        if candidate:Exists()
+            return LLVM_FOLDER_ARM + "clang-cl"
+        end
+        candidate:SetAbsolutePath(LLVM_FOLDER_INTEL + "clang-cl")
+        if candidate:Exists()
+            return LLVM_FOLDER_INTEL + "clang-cl"
+        end
+        return ""
+    end
+
+    /*
+        Makes sure Microsoft's Windows SDK and C runtime are in download/xwin,
+        downloading them with xwin if they aren't. xwin asks for Microsoft's
+        license to be accepted, which AutoBuild can't answer, so it's only run
+        here when acceptMicrosoftLicense is true. Otherwise this prints the
+        command to run once in Terminal, and the Windows build is skipped.
+    */
+    action GetWindowsSdk returns boolean
+        File sdk
+        sdk:SetPath(DOWNLOADS + "/xwin/sdk/include/um/windows.h")
+        if sdk:Exists()
+            return true
+        end
+
+        text xwin = FindTool("xwin", "xwin")
+        if xwin = ""
+            return false
+        end
+
+        File root
+        root:SetPath("..")
+        if not acceptMicrosoftLicense
+            output "Windows.dll needs Microsoft's Windows SDK and C runtime, which xwin downloads"
+            output "under Microsoft's license (about 1.5 GB, into download/xwin, which git ignores)."
+            output "To read and accept the license, run this once in Terminal, then run AutoBuild again:"
+            output "    cd " + root:GetAbsolutePath() + " && xwin --cache-dir download/xwin-cache --arch x86_64 splat --output download/xwin"
+            output "Or set acceptMicrosoftLicense to true at the top of AutoBuild's Main.quorum."
+            windowsSkipped = "Microsoft's license for the Windows SDK hasn't been accepted (see above)."
+            return false
+        end
+
+        Array<text> parameters
+        parameters:Add("--accept-license")
+        parameters:Add("--cache-dir")
+        parameters:Add("download/xwin-cache")
+        parameters:Add("--arch")
+        parameters:Add("x86_64")
+        parameters:Add("splat")
+        parameters:Add("--output")
+        parameters:Add("download/xwin")
+        return RunStep("Downloading Microsoft's Windows SDK and C runtime with xwin (about 1.5 GB; the first time takes a while)", xwin, parameters, root)
+    end
+
+    /*
+        Unpacks NVDA's controller client zip into download/nvda. Its files
+        aren't in a folder of their own, so it's unpacked with tar, which
+        reads zip files on the Mac and on Windows.
+    */
+    action ExtractNvdaClient
+        File client
+        client:SetPath(DOWNLOADS + "/nvda/x64/" + NVDA_NAME)
+        if client:Exists()
+            output "Found NVDA's controller client, skipping"
+            return now
+        end
+
+        File folder
+        folder:SetPath(DOWNLOADS + "/nvda")
+        if not folder:Exists()
+            folder:CreateDirectories()
+        end
+
+        File root
+        root:SetPath("..")
+        Array<text> parameters
+        parameters:Add("-xf")
+        parameters:Add("download/" + NVDA_CLIENT_ZIP_NAME)
+        parameters:Add("-C")
+        parameters:Add("download/nvda")
+        RunStep("Unpacking NVDA's controller client", "tar", parameters, root)
+    end
+
+    /*
+        Copies NVDA's 64-bit client DLL, unchanged, and its license (LGPL 2.1)
+        to the standard library, next to where Windows.dll is loaded from.
+    */
+    action CopyNvdaClient
+        File client
+        client:SetPath(DOWNLOADS + "/nvda/x64/" + NVDA_NAME)
+        if not client:Exists()
+            output "NVDA's controller client wasn't found in download/nvda, so it wasn't copied. NVDA speech won't work."
+            return now
+        end
+        CopyToStandardLibrary(DOWNLOADS + "/nvda/x64/" + NVDA_NAME, SPEECH_FOLDER, NVDA_NAME)
+        CopyToStandardLibrary(DOWNLOADS + "/nvda/license.txt", SPEECH_FOLDER, NVDA_LICENSE_NAME)
+    end
+
+    /*
+        Prints what Windows.dll exports and needs, as a quick check: 142 JNI
+        functions (71 game, 54 accessibility, 17 speech), and only Windows'
+        own DLLs, with no .NET or Visual C++ runtime.
+    */
+    action CheckWindowsLibrary(text path)
+        text objdump = ""
+        File candidate
+        candidate:SetAbsolutePath(LLVM_FOLDER_ARM + "llvm-objdump")
+        if candidate:Exists()
+            objdump = LLVM_FOLDER_ARM + "llvm-objdump"
+        else
+            candidate:SetAbsolutePath(LLVM_FOLDER_INTEL + "llvm-objdump")
+            if candidate:Exists()
+                objdump = LLVM_FOLDER_INTEL + "llvm-objdump"
+            end
+        end
+        if objdump = ""
+            return now
+        end
+
+        File root
+        root:SetPath("..")
+        Array<text> parameters
+        parameters:Add("-p")
+        parameters:Add(path)
+        if not RunStep("Checking " + WINDOWS_NAME, objdump, parameters, root)
+            return now
+        end
+
+        integer functions = 0
+        text needs = ""
+        boolean unwanted = false
+        i = 0
+        repeat while i < lastOutput:GetSize()
+            text line = lastOutput:Get(i)
+            if line:Contains("Java_")
+                functions = functions + 1
+            elseif line:Contains("DLL Name:")
+                text name = line:Trim()
+                name = name:GetSubtext(9)
+                name = name:Trim()
+                needs = needs + " " + name
+                text lower = name:ToLowerCase()
+                if lower:Contains("mscoree") or lower:Contains("msvcp") or lower:Contains("vcruntime") or lower:Contains("nvdacontroller")
+                    unwanted = true
+                end
+            end
+            i = i + 1
+        end
+        output WINDOWS_NAME + " exports " + functions + " JNI functions (142 expected) and needs:" + needs
+        if unwanted
+            output "Warning: " + WINDOWS_NAME + " needs a DLL it shouldn't (.NET, the Visual C++ runtime, or NVDA's client)."
+        end
     end
 
     /*
@@ -560,8 +813,8 @@ class Main is NetworkRequestListener, ProcessListener
         On Windows, only the Windows DLL can be built: the Mac and iOS
         natives need Apple's compilers and SDKs, which only run on a Mac.
         The DLL is built with the same CMakeLists.txt as on a Mac, with
-        Visual Studio's C++ tools if they're installed, or else MinGW.
-        CMake is installed with winget if it's missing.
+        Visual Studio's C++ tools and ATL. CMake is installed with winget
+        if it's missing.
     */
     action DoWindowsHost
         cmake = FindWindowsCMake()
@@ -586,10 +839,9 @@ class Main is NetworkRequestListener, ProcessListener
     end
 
     /*
-        Builds the Windows DLL on Windows and copies it to the standard
-        library. Visual Studio builds into build/windows, MinGW into
-        build/windows-mingw, since CMake can't switch compilers in a folder
-        it has already set up.
+        Builds Windows.dll on Windows with Visual Studio's C++ tools and ATL,
+        and copies it, with NVDA's client DLL and its license, to the
+        standard library.
     */
     action DoWindowsOnWindows returns boolean
         output "=== Windows ==="
@@ -600,19 +852,8 @@ class Main is NetworkRequestListener, ProcessListener
 
         Array<text> options
         text folder = "build/windows"
-        if compiler = VISUAL_STUDIO
-            options:Add("-A")
-            options:Add("x64")
-        else
-            // MinGW: the compiler is the folder holding gcc.exe.
-            folder = "build/windows-mingw"
-            options:Add("-G")
-            options:Add("MinGW Makefiles")
-            options:Add("-DCMAKE_C_COMPILER=" + compiler + "/gcc.exe")
-            options:Add("-DCMAKE_CXX_COMPILER=" + compiler + "/g++.exe")
-            options:Add("-DCMAKE_RC_COMPILER=" + compiler + "/windres.exe")
-            options:Add("-DCMAKE_MAKE_PROGRAM=" + compiler + "/mingw32-make.exe")
-        end
+        options:Add("-A")
+        options:Add("x64")
         if not BuildWithCMake(folder, options)
             return false
         end
@@ -632,6 +873,7 @@ class Main is NetworkRequestListener, ProcessListener
         end
         output "Built " + builtFile:GetAbsolutePath()
         CopyToStandardLibrary(built, DESKTOP_FOLDER, WINDOWS_NAME)
+        CopyNvdaClient()
         return true
     end
 
@@ -675,35 +917,17 @@ class Main is NetworkRequestListener, ProcessListener
     end
 
     /*
-        Finds a C and C++ compiler for Windows: Visual Studio's C++ tools,
-        found with Microsoft's vswhere, or else MinGW in its usual folders.
-        If neither is there and installVisualStudioBuildTools is true, the
-        Visual Studio Build Tools are installed with winget.
+        Finds Visual Studio's C++ tools with ATL, with Microsoft's vswhere.
+        If they're not there and installVisualStudioBuildTools is true, the
+        Visual Studio Build Tools are installed with winget, with ATL. (ATL is
+        an optional part of the C++ tools, used by the speech code. MinGW
+        can't build the accessibility code, so it isn't used.)
 
-        Returns VISUAL_STUDIO, the folder holding MinGW's gcc.exe, or "" if
-        there is no compiler.
+        Returns VISUAL_STUDIO, or "" if there is no compiler.
     */
     action FindWindowsCompiler returns text
         if HasVisualStudioCompiler()
             return VISUAL_STUDIO
-        end
-
-        Array<text> folders
-        folders:Add("C:/msys64/ucrt64/bin")
-        folders:Add("C:/msys64/mingw64/bin")
-        folders:Add("C:/mingw64/bin")
-        folders:Add("C:/ProgramData/mingw64/mingw64/bin")
-        i = 0
-        repeat while i < folders:GetSize()
-            File gcc
-            gcc:SetAbsolutePath(folders:Get(i) + "/gcc.exe")
-            File make
-            make:SetAbsolutePath(folders:Get(i) + "/mingw32-make.exe")
-            if gcc:Exists() and make:Exists()
-                output "Using MinGW in " + folders:Get(i)
-                return folders:Get(i)
-            end
-            i = i + 1
         end
 
         if installVisualStudioBuildTools
@@ -718,7 +942,7 @@ class Main is NetworkRequestListener, ProcessListener
             parameters:Add("--accept-package-agreements")
             parameters:Add("--accept-source-agreements")
             parameters:Add("--override")
-            parameters:Add("--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended")
+            parameters:Add("--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --add Microsoft.VisualStudio.Component.VC.ATL")
             if RunStep("Installing the Visual Studio Build Tools with winget (several gigabytes; Windows will ask for permission)", "winget", parameters, root)
                 if HasVisualStudioCompiler()
                     return VISUAL_STUDIO
@@ -726,19 +950,17 @@ class Main is NetworkRequestListener, ProcessListener
             end
         end
 
-        output "No C++ compiler was found. Either:"
-        output "    install Visual Studio, or its Build Tools, with the 'Desktop development with C++' workload"
-        output "    (https://visualstudio.microsoft.com/downloads, or set installVisualStudioBuildTools to true"
-        output "    in AutoBuild to install them with winget); or"
-        output "    install MinGW with MSYS2 (https://www.msys2.org), then in its terminal:"
-        output "    pacman -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-make"
-        output "Then run AutoBuild again."
+        output "Visual Studio's C++ tools with ATL weren't found. Install Visual Studio, or its Build Tools,"
+        output "with the 'Desktop development with C++' workload and 'C++ ATL for latest build tools'"
+        output "(https://visualstudio.microsoft.com/downloads), or set installVisualStudioBuildTools to true"
+        output "in AutoBuild to install them with winget. Then run AutoBuild again."
         return ""
     end
 
     /*
         Returns true if Visual Studio, or its Build Tools, is installed with
-        the C++ compiler for 64-bit Windows.
+        the C++ compiler for 64-bit Windows and ATL. (vswhere's -requires
+        needs every component listed.)
     */
     action HasVisualStudioCompiler returns boolean
         File vswhere
@@ -755,9 +977,10 @@ class Main is NetworkRequestListener, ProcessListener
         parameters:Add("*")
         parameters:Add("-requires")
         parameters:Add("Microsoft.VisualStudio.Component.VC.Tools.x86.x64")
+        parameters:Add("Microsoft.VisualStudio.Component.VC.ATL")
         parameters:Add("-property")
         parameters:Add("installationPath")
-        if not RunStep("Looking for Visual Studio's C++ tools", WINDOWS_VSWHERE, parameters, root)
+        if not RunStep("Looking for Visual Studio's C++ tools with ATL", WINDOWS_VSWHERE, parameters, root)
             return false
         end
 

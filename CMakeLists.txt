@@ -3,11 +3,13 @@ cmake_minimum_required(VERSION 3.18)
 # Builds the natives for one platform per build folder:
 #   Mac:     cmake -S . -B build/mac
 #            (Mac.so, one universal file with both architectures)
-#   Windows: cmake -S . -B build/windows -DCMAKE_TOOLCHAIN_FILE=toolchains/mingw-w64.cmake
-#            (cross-compiled on a Mac, libGameEngineCPlugins64.dll)
-#            On Windows itself, with Visual Studio's C++ tools:
+#   Windows: cmake -S . -B build/windows -G Ninja -DCMAKE_TOOLCHAIN_FILE=toolchains/clang-cl-xwin.cmake
+#            (cross-compiled on a Mac with clang-cl, Windows.dll: the game
+#            natives, accessibility and speech; see the toolchain file)
+#            On Windows itself, with Visual Studio's C++ tools and ATL:
 #            cmake -S . -B build/windows -A x64 && cmake --build build/windows --config Release
-#            (build/windows/Release/libGameEngineCPlugins64.dll)
+#            (build/windows/Release/Windows.dll)
+#            Both need WIL in download/wil, which AutoBuild downloads.
 #   iOS:     cmake -S . -B build/ios -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos -DCMAKE_OSX_ARCHITECTURES=arm64
 #            (liballnatives.a; use iphonesimulator and "arm64;x86_64" for the simulator)
 #   Web:     emcmake cmake -S . -B build/web, with Emscripten's environment set up
@@ -21,8 +23,16 @@ endif()
 if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
 endif()
+# On Windows, put the C and C++ runtime inside Windows.dll (/MT), FreeType's
+# code included, so users need no Visual C++ Redistributable. Set before
+# project() so it applies to everything.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 project(QuorumNatives VERSION 2.0 LANGUAGES C CXX)
+
+if (WIN32 AND NOT MSVC)
+    message(FATAL_ERROR "Windows.dll is built with clang-cl (on a Mac; see toolchains/clang-cl-xwin.cmake) or Visual Studio (on Windows). MinGW isn't supported: the accessibility code needs Microsoft's WIL.")
+endif()
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -109,6 +119,18 @@ if (APPLE)
     set_source_files_properties(${APPLE_SOURCES} PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
 endif()
 
+# Windows only: accessibility (UI Automation, src/windows/accessibility) and
+# speech (SAPI, JAWS and NVDA, src/windows/speech), in the same Windows.dll.
+if (WIN32)
+    file(GLOB WINDOWS_SOURCES CONFIGURE_DEPENDS
+        src/windows/accessibility/*.cpp
+        src/windows/speech/*.cpp)
+    set(QUORUM_WIL "${CMAKE_SOURCE_DIR}/download/wil/include")
+    if (NOT EXISTS "${QUORUM_WIL}/wil/com.h")
+        message(FATAL_ERROR "WIL is missing from download/wil. Run AutoBuild once to download it.")
+    endif()
+endif()
+
 if (QUORUM_IOS)
     # iOS apps link natives statically: one archive with the natives, the
     # iOS graphics and audio code (ObjectAL), and FreeType. RoboVM links
@@ -117,7 +139,7 @@ if (QUORUM_IOS)
         src/ios/*.cpp src/ios/*.m src/ios/*.c)
     add_library(GameEngineCPlugins STATIC ${NATIVE_SOURCES} ${IOS_SOURCES} ${APPLE_SOURCES})
 else()
-    add_library(GameEngineCPlugins MODULE ${NATIVE_SOURCES} ${APPLE_SOURCES})
+    add_library(GameEngineCPlugins MODULE ${NATIVE_SOURCES} ${APPLE_SOURCES} ${WINDOWS_SOURCES})
     if (APPLE)
         target_link_libraries(GameEngineCPlugins PRIVATE
             "-framework Foundation" "-framework AVFoundation")
@@ -132,7 +154,7 @@ target_link_libraries(GameEngineCPlugins PRIVATE freetype)
 target_compile_options(GameEngineCPlugins PRIVATE -O2)
 
 # The names Quorum loads: Mac.so on Mac (universal, arm64 and x86_64),
-# libGameEngineCPlugins64.dll on Windows, and liballnatives.a on iOS.
+# Windows.dll on Windows, and liballnatives.a on iOS.
 if (QUORUM_IOS)
     # A static library doesn't include the libraries it links to, so
     # FreeType's objects are merged into the final archive.
@@ -144,12 +166,22 @@ if (QUORUM_IOS)
 elseif (APPLE)
     set_target_properties(GameEngineCPlugins PROPERTIES PREFIX "" OUTPUT_NAME "Mac" SUFFIX ".so")
 elseif (WIN32)
-    set_target_properties(GameEngineCPlugins PROPERTIES PREFIX "lib" OUTPUT_NAME "GameEngineCPlugins64")
-    if (MINGW)
-        # Put the GCC runtime inside the DLL, so it doesn't need
-        # libgcc, libstdc++ or libwinpthread DLLs next to it.
-        target_link_options(GameEngineCPlugins PRIVATE -static -static-libgcc -static-libstdc++)
+    # The accessibility code needs C++17 (WIL).
+    set_target_properties(GameEngineCPlugins PROPERTIES PREFIX "" OUTPUT_NAME "Windows" CXX_STANDARD 17)
+    target_compile_definitions(GameEngineCPlugins PRIVATE UNICODE _UNICODE)
+    target_include_directories(GameEngineCPlugins PRIVATE
+        "${QUORUM_WIL}"
+        src/windows/accessibility
+        src/windows/speech)
+    if (QUORUM_ATL_STANDIN)
+        # Small stand-ins for the few ATL classes the speech code uses, when
+        # ATL isn't available (the clang-cl build on a Mac).
+        target_include_directories(GameEngineCPlugins PRIVATE src/windows/speech/atl)
     endif()
+    # NVDA's client DLL isn't linked: the speech code loads it when needed.
+    target_link_libraries(GameEngineCPlugins PRIVATE
+        UIAutomationCore sapi advapi32 ole32 oleaut32 user32 uuid
+        "comsuppw$<$<CONFIG:Debug>:d>")
 endif()
 
 # Image loader tests: decode files and check formats, no JNI or Java needed.

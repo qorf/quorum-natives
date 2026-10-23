@@ -1,11 +1,12 @@
 # quorum-natives
 
-The C and C++ native libraries for the Quorum programming language's game engine: image loading (stb_image), fonts (FreeType), and buffer and matrix helpers, called from Java through JNI. The finished libraries are copied into the standard library in `quorum-language/Quorum/Library/Standard/Native`.
+The C and C++ native libraries for the Quorum programming language, called from Java through JNI: for the game engine, image loading (stb_image), fonts (FreeType), and buffer and matrix helpers; text to speech on the Mac, iOS and Windows; and, on Windows, accessibility (UI Automation). The finished libraries are copied into the standard library in `quorum-language/Quorum/Library/Standard/Native`.
 
 | Platform | File | Where it goes in `Native/` |
 |---|---|---|
 | Mac, Apple Silicon and Intel (one universal file) | `Mac.so` | `Libraries.Game` |
-| Windows, 64-bit | `libGameEngineCPlugins64.dll` | `Libraries.Game` |
+| Windows, 64-bit: the game natives, accessibility and speech | `Windows.dll` | `Libraries.Game` |
+| Windows: NVDA's controller client (not ours; LGPL 2.1, copied unchanged) | `nvdaControllerClient.dll`, `nvdaControllerClient-LICENSE.txt` | `Libraries.Sound.Speech` |
 | iPhone and iPad | `ios.a` | `mobile` |
 | iOS Simulator | `iosSimulator.a` | `mobile` |
 
@@ -22,11 +23,19 @@ One run of the AutoBuild project builds the Mac, Windows, iOS and web natives an
 2. **The Xcode command line tools**, with `xcode-select --install`. For iOS you need the full **Xcode** from the App Store, which includes the iOS SDK.
 3. **Quorum Studio 4.3 or above** (https://quorumlanguage.com/download.html). Its JDK provides the JNI headers for Mac and iOS.
 
-AutoBuild installs **CMake** and **MinGW-w64** (the Windows cross-compiler) with Homebrew if they're missing.
+AutoBuild installs **CMake**, and the tools for `Windows.dll` (**llvm** for `clang-cl`, **lld**, **xwin** and **ninja**), with Homebrew if they're missing.
+
+**For `Windows.dll`, once:** Microsoft's Windows SDK and C runtime are downloaded with `xwin`, under Microsoft's license, into `download/xwin` (about 1.5 GB; `download/` is ignored by git, and these files must never be committed). AutoBuild can't answer xwin's license question, so either run this once in Terminal, from the root of `quorum-natives`, and accept the license:
+
+```bash
+xwin --cache-dir download/xwin-cache --arch x86_64 splat --output download/xwin
+```
+
+or set `acceptMicrosoftLicense` to `true` in `Main.quorum`. Until one of these is done, AutoBuild skips Windows and says why.
 
 **Then:**
 1. Keep `quorum-natives` and `quorum-language` in the same folder. The finished files are copied to `../quorum-language/Quorum/Library/Standard/Native`.
-2. Open the project `AutoBuild` in Quorum Studio and run it. The first run downloads FreeType and the Windows JDK's headers, and takes a few minutes. Later runs only rebuild what changed.
+2. Open the project `AutoBuild` in Quorum Studio and run it. The first run downloads FreeType, the Windows JDK's headers, WIL and NVDA's controller client, and takes a few minutes. Later runs only rebuild what changed.
 3. At the end, a summary lists which platforms built and which failed. A failed step stops only its own platform, and prints the last 40 lines of the tool's output.
 4. Rebuild the standard library as usual.
 
@@ -36,15 +45,16 @@ AutoBuild installs **CMake** and **MinGW-w64** (the Windows cross-compiler) with
 |---|---|---|
 | `buildMac` | `true` | Builds the Mac library, `Mac.so`, for Apple Silicon and Intel. |
 | `macVersion` | `"11.0"` | The oldest macOS the library loads on. |
-| `buildWindows` | `true` | Builds the Windows DLL: cross-compiled on a Mac, or built directly on Windows. |
+| `buildWindows` | `true` | Builds `Windows.dll`: cross-compiled on a Mac with clang-cl, or built on Windows with Visual Studio. |
+| `acceptMicrosoftLicense` | `false` | On a Mac: lets AutoBuild run xwin with `--accept-license`, accepting Microsoft's license for the Windows SDK and C runtime. |
 | `buildIOS` | `true` | Builds the iOS device and simulator libraries. |
 | `iosVersion` | `"14.0"` | The oldest iOS the libraries support. |
-| `installVisualStudioBuildTools` | `false` | On Windows only: install the Visual Studio Build Tools with `winget` if no compiler is found. |
+| `installVisualStudioBuildTools` | `false` | On Windows only: install the Visual Studio Build Tools, with ATL, with `winget` if they're not found. |
 | `buildWebNatives` | `true` | Builds the web module (WebAssembly) with Emscripten, on a Mac or Windows. The first time downloads Emscripten (about 1 GB). |
 | `copyToStandardLibrary` | `true` | Copies the results into the standard library. If false, they stay in `build/`. |
 | `verbose` | `false` | Prints every tool's output, not only on failure. |
 
-**Testing the Windows DLL:** it's built on the Mac but can't run there, so test it on Windows before shipping it.
+**Testing `Windows.dll`:** it's built on the Mac but can't run there, so test it on Windows before shipping it.
 
 ### How it works
 
@@ -53,7 +63,7 @@ Everything is built from the `CMakeLists.txt` in the root folder, one build fold
 | Platform | Folder | How |
 |---|---|---|
 | Mac | `build/mac` | One build for both `arm64` and `x86_64`, with FreeType built in, giving one universal file, `Mac.so`. `lipo -verify_arch` checks it has both. macOS loads the half that matches the running Java. |
-| Windows | `build/windows` | Cross-compiled with MinGW-w64 (`toolchains/mingw-w64.cmake`), with the GCC runtime linked in. |
+| Windows | `build/windows-clang` | Cross-compiled with `clang-cl` and `lld-link` (`toolchains/clang-cl-xwin.cmake`), using Microsoft's Windows SDK and C runtime from `xwin`, with the C runtime linked in (`/MT`). xwin has no ATL, so the speech code uses the stand-ins in `src/windows/speech/atl` (`QUORUM_ATL_STANDIN`). |
 | iOS | `build/ios-device`, `build/ios-simulator` | `CMAKE_SYSTEM_NAME=iOS`. Static libraries with the natives, `src/ios`, and FreeType merged in (`liballnatives.a`). |
 
 The same builds from Terminal, from the root of `quorum-natives`:
@@ -63,8 +73,10 @@ cmake -S . -B build/mac -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 && cmake --build buil
 ```
 
 ```bash
-cmake -S . -B build/windows -DCMAKE_TOOLCHAIN_FILE=$PWD/toolchains/mingw-w64.cmake && cmake --build build/windows --parallel
+cmake -S . -B build/windows-clang -G Ninja -DCMAKE_TOOLCHAIN_FILE=$PWD/toolchains/clang-cl-xwin.cmake && cmake --build build/windows-clang
 ```
+
+(After AutoBuild, or xwin and the WIL download, has filled `download/xwin` and `download/wil`.)
 
 ```bash
 cmake -S . -B build/ios-device -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos -DCMAKE_OSX_ARCHITECTURES=arm64 && cmake --build build/ios-device --parallel
@@ -77,6 +89,8 @@ For the simulator, use `-DCMAKE_OSX_SYSROOT=iphonesimulator "-DCMAKE_OSX_ARCHITE
 - **"download/freetype/CMakeLists.txt is the iOS build's copy":** an older iOS build replaced FreeType's own CMakeLists.txt. AutoBuild fixes this itself by extracting FreeType again. By hand, delete `download/freetype` and run AutoBuild.
 - **"CMake was not found":** install Homebrew, or `brew install cmake`, and run again. Quorum Studio started from the Finder doesn't see your Terminal `PATH`, so AutoBuild looks in `/opt/homebrew/bin`, `/usr/local/bin` and `CMake.app`.
 - **iOS fails at "Checking for the iOS SDK":** install the full Xcode, not just the command line tools.
+- **"Windows: skipped. Microsoft's license ... hasn't been accepted":** run the `xwin` command above once, or set `acceptMicrosoftLicense`.
+- **"MinGW isn't supported":** an old `build/windows` folder may hold a MinGW build. AutoBuild on a Mac now builds in `build/windows-clang`; delete `build/windows` if you build by hand.
 
 ### More information
 
@@ -87,23 +101,19 @@ The plans and history for this build are in the plans repository, `plans/Plans/N
 
 ## Building on Windows
 
-On Windows, AutoBuild builds the **Windows DLL** only. The Mac and iOS natives need Apple's compilers and SDKs, which only run on a Mac, so they're skipped (the summary says so).
+On Windows, AutoBuild builds **`Windows.dll`** only. The Mac and iOS natives need Apple's compilers and SDKs, which only run on a Mac, so they're skipped (the summary says so).
 
 **Install these once:**
 1. **Quorum Studio**, to run AutoBuild.
-2. **A C++ compiler**, either:
-   - **Visual Studio** (2019 or newer), or just its free **Build Tools**, with the "Desktop development with C++" workload (https://visualstudio.microsoft.com/downloads). AutoBuild finds it with Microsoft's `vswhere`. Setting `installVisualStudioBuildTools` to `true` in `Main.quorum` makes AutoBuild install the Build Tools itself with `winget`. They're several gigabytes, and Windows asks for permission; or
-   - **MinGW**, from MSYS2 (https://www.msys2.org). In the MSYS2 terminal: `pacman -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-make`. AutoBuild looks in `C:/msys64/ucrt64/bin`, `C:/msys64/mingw64/bin`, `C:/mingw64/bin` and Chocolatey's MinGW folder.
+2. **Visual Studio** (2022 or newer), or just its free **Build Tools**, with the "Desktop development with C++" workload **and** "C++ ATL for latest build tools" (https://visualstudio.microsoft.com/downloads). ATL is optional in the installer, so it has to be ticked. AutoBuild finds them with Microsoft's `vswhere`. Setting `installVisualStudioBuildTools` to `true` in `Main.quorum` makes AutoBuild install the Build Tools, with ATL, itself with `winget`. They're several gigabytes, and Windows asks for permission.
 
-   Visual Studio is used if both are installed.
+MinGW can't be used: the accessibility code needs Microsoft's WIL, which only builds with Microsoft's compiler or clang.
 
 **CMake** is installed by AutoBuild with `winget` if it isn't already in `C:/Program Files/CMake` or on the `PATH`.
 
-**Then** run AutoBuild, as on a Mac. It downloads FreeType and the Windows JDK's headers, then builds:
-- with Visual Studio, into `build/windows`, giving `build/windows/Release/libGameEngineCPlugins64.dll`;
-- with MinGW, into `build/windows-mingw`.
+**Then** run AutoBuild, as on a Mac. It downloads FreeType, the Windows JDK's headers, WIL and NVDA's controller client, then builds into `build/windows`, giving `build/windows/Release/Windows.dll`. On Windows the real ATL is used, not the stand-ins.
 
-The DLL is copied into the standard library's `Native/Libraries.Game`.
+`Windows.dll` is copied into the standard library's `Native/Libraries.Game`, and NVDA's client DLL and license into `Native/Libraries.Sound.Speech`.
 
 By hand, from the root of `quorum-natives`, after AutoBuild has downloaded FreeType and the JDK once:
 
@@ -111,6 +121,15 @@ By hand, from the root of `quorum-natives`, after AutoBuild has downloaded FreeT
 cmake -S . -B build/windows -A x64
 cmake --build build/windows --config Release
 ```
+
+## What's in `Windows.dll`
+
+| Part | Source | Notes |
+|---|---|---|
+| Game natives | `src/main/cpp` | The same as on the Mac. |
+| Accessibility (UI Automation) | `src/windows/accessibility` | Moved from `quorum-language/Plugins/AccessibilityPlugin/Native/Windows/src` (2026). Uses Microsoft's WIL, downloaded into `download/wil`. Each `...Control.cpp` ends with an explicit `template class ControlT<...>;` so optimized builds keep `ControlT`'s members for other files to link to. |
+| Speech: SAPI, JAWS, NVDA | `src/windows/speech` | The 2019 `SappyJNI` from the Phonemic project, without its .NET leftovers. JAWS is reached through COM. NVDA's client DLL is loaded from the same folder as `Windows.dll` when NVDA is used, so a missing NVDA DLL only turns NVDA off; it uses `isSpeaking` (NVDA 2026.3+) and synchronous `speakSsml` (NVDA 2024.1+) when they're there. |
+| ATL stand-ins | `src/windows/speech/atl` | Only for the clang-cl build on a Mac, which has no ATL: small versions of `CComPtr`, `CComDispatchDriver` and `CString`. A Visual Studio build uses the real ATL. |
 
 ## The web module (WebAssembly)
 
