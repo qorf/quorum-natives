@@ -101,15 +101,27 @@ set(NATIVE_SOURCES
     src/main/cpp/FreeTypeStrategy.c
 )
 
+# Code shared by the Mac and iOS: text to speech (AVSpeechSynthesizer).
+# It uses ARC; the older iOS sources (ObjectAL) don't, so it's set per file.
+if (APPLE)
+    enable_language(OBJC)
+    set(APPLE_SOURCES src/apple/AppleSpeech.m)
+    set_source_files_properties(${APPLE_SOURCES} PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+endif()
+
 if (QUORUM_IOS)
     # iOS apps link natives statically: one archive with the natives, the
-    # iOS graphics and audio code (ObjectAL), and FreeType.
-    enable_language(OBJC)
+    # iOS graphics and audio code (ObjectAL), and FreeType. RoboVM links
+    # the frameworks (robovm.xml), including AVFoundation for speech.
     file(GLOB_RECURSE IOS_SOURCES CONFIGURE_DEPENDS
         src/ios/*.cpp src/ios/*.m src/ios/*.c)
-    add_library(GameEngineCPlugins STATIC ${NATIVE_SOURCES} ${IOS_SOURCES})
+    add_library(GameEngineCPlugins STATIC ${NATIVE_SOURCES} ${IOS_SOURCES} ${APPLE_SOURCES})
 else()
-    add_library(GameEngineCPlugins MODULE ${NATIVE_SOURCES})
+    add_library(GameEngineCPlugins MODULE ${NATIVE_SOURCES} ${APPLE_SOURCES})
+    if (APPLE)
+        target_link_libraries(GameEngineCPlugins PRIVATE
+            "-framework Foundation" "-framework AVFoundation")
+    endif()
 endif()
 
 target_compile_definitions(GameEngineCPlugins PRIVATE FT2_BUILD_LIBRARY)

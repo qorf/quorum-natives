@@ -149,6 +149,11 @@ class Main is NetworkRequestListener, ProcessListener
     boolean installVisualStudioBuildTools = false
     text iosVersion = "14.0"
 
+    // The oldest macOS the Mac library loads on. Without it, the compiler uses
+    // the building Mac's own version, and older Macs refuse the library.
+    // 11.0 is the first macOS on Apple Silicon.
+    text macVersion = "11.0"
+
     // Builds the web module with Emscripten, on a Mac or Windows. The first
     // time, Emscripten is downloaded and installed (about 1 GB).
     boolean buildWebNatives = true
@@ -294,6 +299,7 @@ class Main is NetworkRequestListener, ProcessListener
         output "=== Mac ==="
         Array<text> options
         options:Add("-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64")
+        options:Add("-DCMAKE_OSX_DEPLOYMENT_TARGET=" + macVersion)
         if not BuildWithCMake("build/mac", options)
             return false
         end
