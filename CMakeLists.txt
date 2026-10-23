@@ -120,7 +120,7 @@ if (APPLE)
 endif()
 
 # Windows only: accessibility (UI Automation, src/windows/accessibility) and
-# speech (SAPI, JAWS and NVDA, src/windows/speech), in the same Windows.dll.
+# speech (SAPI, src/windows/speech), in the same Windows.dll.
 if (WIN32)
     file(GLOB WINDOWS_SOURCES CONFIGURE_DEPENDS
         src/windows/accessibility/*.cpp
@@ -178,7 +178,6 @@ elseif (WIN32)
         # ATL isn't available (the clang-cl build on a Mac).
         target_include_directories(GameEngineCPlugins PRIVATE src/windows/speech/atl)
     endif()
-    # NVDA's client DLL isn't linked: the speech code loads it when needed.
     target_link_libraries(GameEngineCPlugins PRIVATE
         UIAutomationCore sapi advapi32 ole32 oleaut32 user32 uuid
         "comsuppw$<$<CONFIG:Debug>:d>")

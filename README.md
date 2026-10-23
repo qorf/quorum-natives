@@ -6,7 +6,6 @@ The C and C++ native libraries for the Quorum programming language, called from 
 |---|---|---|
 | Mac, Apple Silicon and Intel (one universal file) | `Mac.so` | `Libraries.Game` |
 | Windows, 64-bit: the game natives, accessibility and speech | `Windows.dll` | `Libraries.Game` |
-| Windows: NVDA's controller client (not ours; LGPL 2.1, copied unchanged) | `nvdaControllerClient.dll`, `nvdaControllerClient-LICENSE.txt` | `Libraries.Sound.Speech` |
 | iPhone and iPad | `ios.a` | `mobile` |
 | iOS Simulator | `iosSimulator.a` | `mobile` |
 
@@ -35,7 +34,7 @@ or set `acceptMicrosoftLicense` to `true` in `Main.quorum`. Until one of these i
 
 **Then:**
 1. Keep `quorum-natives` and `quorum-language` in the same folder. The finished files are copied to `../quorum-language/Quorum/Library/Standard/Native`.
-2. Open the project `AutoBuild` in Quorum Studio and run it. The first run downloads FreeType, the Windows JDK's headers, WIL and NVDA's controller client, and takes a few minutes. Later runs only rebuild what changed.
+2. Open the project `AutoBuild` in Quorum Studio and run it. The first run downloads FreeType, the Windows JDK's headers and WIL, and takes a few minutes. Later runs only rebuild what changed.
 3. At the end, a summary lists which platforms built and which failed. A failed step stops only its own platform, and prints the last 40 lines of the tool's output.
 4. Rebuild the standard library as usual.
 
@@ -111,9 +110,9 @@ MinGW can't be used: the accessibility code needs Microsoft's WIL, which only bu
 
 **CMake** is installed by AutoBuild with `winget` if it isn't already in `C:/Program Files/CMake` or on the `PATH`.
 
-**Then** run AutoBuild, as on a Mac. It downloads FreeType, the Windows JDK's headers, WIL and NVDA's controller client, then builds into `build/windows`, giving `build/windows/Release/Windows.dll`. On Windows the real ATL is used, not the stand-ins.
+**Then** run AutoBuild, as on a Mac. It downloads FreeType, the Windows JDK's headers and WIL, then builds into `build/windows`, giving `build/windows/Release/Windows.dll`. On Windows the real ATL is used, not the stand-ins.
 
-`Windows.dll` is copied into the standard library's `Native/Libraries.Game`, and NVDA's client DLL and license into `Native/Libraries.Sound.Speech`.
+`Windows.dll` is copied into the standard library's `Native/Libraries.Game`.
 
 By hand, from the root of `quorum-natives`, after AutoBuild has downloaded FreeType and the JDK once:
 
@@ -128,8 +127,8 @@ cmake --build build/windows --config Release
 |---|---|---|
 | Game natives | `src/main/cpp` | The same as on the Mac. |
 | Accessibility (UI Automation) | `src/windows/accessibility` | Moved from `quorum-language/Plugins/AccessibilityPlugin/Native/Windows/src` (2026). Uses Microsoft's WIL, downloaded into `download/wil`. Each `...Control.cpp` ends with an explicit `template class ControlT<...>;` so optimized builds keep `ControlT`'s members for other files to link to. |
-| Speech: SAPI, JAWS, NVDA | `src/windows/speech` | The 2019 `SappyJNI` from the Phonemic project, without its .NET leftovers. JAWS is reached through COM. NVDA's client DLL is loaded from the same folder as `Windows.dll` when NVDA is used, so a missing NVDA DLL only turns NVDA off; it uses `isSpeaking` (NVDA 2026.3+) and synchronous `speakSsml` (NVDA 2024.1+) when they're there. |
-| ATL stand-ins | `src/windows/speech/atl` | Only for the clang-cl build on a Mac, which has no ATL: small versions of `CComPtr`, `CComDispatchDriver` and `CString`. A Visual Studio build uses the real ATL. |
+| Speech: SAPI | `src/windows/speech` | The 2019 `SappyJNI` from the Phonemic project, without its .NET leftovers. Windows speech always uses SAPI: the JAWS and NVDA engines were removed in 2026 (screen readers still read Quorum's interface through accessibility). |
+| ATL stand-ins | `src/windows/speech/atl` | Only for the clang-cl build on a Mac, which has no ATL: small versions of `CComPtr` and `CString`. A Visual Studio build uses the real ATL. |
 
 ## The web module (WebAssembly)
 

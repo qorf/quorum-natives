@@ -1,19 +1,15 @@
-// This is the main DLL file.
+// This is the main DLL file. Windows speech uses SAPI only: the JAWS and NVDA
+// engines were removed in 2026.
 
 #include "stdafx.h"
 #include "SpeakInterface.h"
 #include "SapiInterface.h"
-#include "JawsInterface.h"
-#include "NVDAInterface.h"
 #include "SappyJNI.h"
 #include <sapi.h>
 #include <atlstr.h>
 #include <string>
 
-// If true, the default engine used by the TextToSpeech factory will be SAPI.
-bool SappyJNI::defaultToSAPI = true;
-
-//Create an interface for potential screen readers. NULL when no engine could be loaded.
+//The speech engine (SAPI). NULL when it couldn't be loaded.
 SpeakInterface *Interface = NULL;
 std::wstring Engine; // the last requested engine, or empty.
 
@@ -98,93 +94,45 @@ JNIEXPORT jstring JNICALL Java_org_sapi_TextToSpeech_getTextToSpeechEngine
 	}
 }
 
+// Only SAPI ("MICROSOFT_SAPI") is supported; any other engine is refused.
 bool setEngine(const std::wstring &requested) {
-	CString input = requested.c_str();
-	CString jaws_string = L"JAWS";
-	CString nvda_string = L"NVDA";
-	CString sapi_string = L"MICROSOFT_SAPI";
-	SpeakInterface *NewInterface = NULL;
-
-	bool jaws_request = input.Compare(jaws_string) == 0;
-	bool nvda_request = input.Compare(nvda_string) == 0;
-	bool sapi_request = input.Compare(sapi_string) == 0;
-
-	if(!jaws_request && !nvda_request && !sapi_request) {
+	if (requested != L"MICROSOFT_SAPI") {
 		return false;
 	}
 
-	if(jaws_request) {
-		JawsInterface JawsTest;
-		if(JawsTest.Load() && JawsTest.Speak(L"",true)){
-			NewInterface = new JawsInterface();
-			NewInterface->Load();
-			NewInterface->Speak(L"", true);
-		}
+	SpeakInterface *NewInterface = new SapiInterface();
+	if (!NewInterface->Load()) {
+		delete NewInterface;
+		return false;
 	}
-	else if(nvda_request) {
-		NVDAInterface NVDATest;
-		if(NVDATest.Load()){
-			NewInterface = new NVDAInterface();
-			NewInterface->Speak(L"", true);
-		}
-	}
-	else if(sapi_request) {
-		NewInterface = new SapiInterface();
-		NewInterface->Load();
-		NewInterface->Speak(L"", true);
-	}
+	// Have the interface speak an empty line--if you don't,
+	// SAPI doesn't speak when you call the speakNative function
+	NewInterface->Speak(L"", true);
 
-	if(NewInterface != NULL) {
-		ClearInterface();
-		Interface = NewInterface;
-		return true;
-	}
-
-	return false;
+	ClearInterface();
+	Interface = NewInterface;
+	return true;
 }
 /*
  * Attempts to set the text to speech engine.
  */
 JNIEXPORT jboolean JNICALL Java_org_sapi_TextToSpeech_setTextToSpeechEngine
 (JNIEnv *env,jobject obj,jstring str) {
-	// Set the last requested engine.
-	Engine = ToWide(env, str);
-	return setEngine(Engine);
+	// Remember the engine only if it was accepted, for reinitializeNative.
+	std::wstring requested = ToWide(env, str);
+	if (!setEngine(requested)) {
+		return false;
+	}
+	Engine = requested;
+	return true;
 }
 
 /*
- * Loads the default engine: SAPI when defaultToSAPI is true; otherwise JAWS
- * if it can speak, else NVDA if it's running, else SAPI. Interface is NULL if
- * the chosen engine doesn't load.
+ * Loads SAPI, the only engine. Interface is NULL if it doesn't load.
  */
 static void loadDefaultEngine()
 {
-	if (SappyJNI::defaultToSAPI)
-	{
-		Interface = new SapiInterface();
-	}
-	else
-	{
-		//These Jaws and NVDA objects are created to test whether
-		//Jaws or NVDA is currently running on the system
-		JawsInterface JawsTest;
-		NVDAInterface NVDATest;
-
-		//If jaws can speak load the jaws interface
-		if(JawsTest.Load() && JawsTest.Speak(L"",true)){
-			Interface = new JawsInterface();
-		}
-
-		//If JAWS cannot speak and NVDA can, load the NVDA interface.
-		else if(NVDATest.Load()){
-			Interface = new NVDAInterface();
-		}
-
-		//If jaws and NVDA cannot, load the sapi interface
-		else{
-			Interface = new SapiInterface();
-		}
-	}
+	Interface = new SapiInterface();
 
 	if(!Interface->Load()){
 		delete Interface;
