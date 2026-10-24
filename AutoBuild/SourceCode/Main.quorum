@@ -16,11 +16,11 @@ use Libraries.System.Properties
     ways and this system mitigates at least some of that complexity through auto-downloading dependencies and other
     components. Each platform's requirements will be described here so we do not forget how each of them work:
 
-    On a Mac, one run builds the Mac, Windows and iOS natives (see buildMac, buildWindows and buildIOS) with the
-    CMakeLists.txt in the root folder, each in its own folder under build, and copies them into the standard library.
-    Homebrew is used to install CMake, and the tools for Windows (llvm, lld, xwin, ninja), if they are missing.
-    Homebrew itself, and the Xcode command line tools, must be installed by hand, since both ask for an administrator
-    password.
+    On a Mac, one run builds the Mac, Windows, iOS and Android natives (see buildMac, buildWindows, buildIOS and
+    buildAndroid) with the CMakeLists.txt in the root folder, each in its own folder under build, and copies them into
+    the standard library. Homebrew is used to install CMake, and the tools for Windows (llvm, lld, xwin, ninja), if they
+    are missing. Homebrew itself, and the Xcode command line tools, must be installed by hand, since both ask for an
+    administrator password.
 
     Windows:
 
@@ -32,9 +32,10 @@ use Libraries.System.Properties
     Microsoft's license accepted (acceptMicrosoftLicense). xwin has no ATL, so the speech code uses the small
     stand-ins in src/windows/speech/atl. It can't be run on a Mac, so test it on Windows.
 
-    On Windows, only Windows.dll can be built (DoWindowsHost); Mac and iOS need Apple's compilers and SDKs. It uses the
-    same CMakeLists.txt, with Visual Studio's C++ tools and ATL (found with vswhere). CMake is installed with winget if
-    it's missing; the Visual Studio Build Tools only if installVisualStudioBuildTools is true.
+    On Windows, Windows.dll and the Android natives can be built (DoWindowsHost); Mac and iOS need Apple's compilers
+    and SDKs. Windows.dll uses the same CMakeLists.txt, with Visual Studio's C++ tools and ATL (found with vswhere).
+    CMake is installed with winget if it's missing; the Visual Studio Build Tools only if installVisualStudioBuildTools
+    is true.
 
     Web:
 
@@ -54,8 +55,22 @@ use Libraries.System.Properties
     iOS:
 
     Two CMake builds (CMAKE_SYSTEM_NAME=iOS) make liballnatives.a for phones (arm64) and for the simulator (arm64 and
-    x86_64). Each has the natives, src/ios, and FreeType merged in. They are copied to Native/mobile as ios.a and
-    iosSimulator.a. Needs the full Xcode for the iOS SDK. Running and signing apps is described below.
+    x86_64). Each has the natives, src/ios, and FreeType merged in, and for Vulkan, src/vulkan, glslang and MoltenVK.
+    They are copied to Native/mobile as ios.a and iosSimulator.a. Needs the full Xcode for the iOS SDK. Running and
+    signing apps is described below.
+
+    Android:
+
+    One CMake build per ABI (arm64-v8a for phones and the emulator on Apple Silicon, x86_64 for the emulator on Intel)
+    makes libGameEngineCPlugins.so: the natives, FreeType, and for Vulkan, src/vulkan and glslang, linked to the
+    phone's own Vulkan. They are copied to Native/mobile/android/<ABI>. It uses Google's NDK with its CMake toolchain
+    and Ninja, on a Mac or on Windows. The NDK is used from the Android SDK if it's there, and otherwise downloaded into
+    download/ (about 1 GB) once Google's license is accepted (acceptAndroidLicense).
+
+    Vulkan on iOS and Android:
+
+    Quorum's own Vulkan layer (src/vulkan) is built into both. It needs the Vulkan headers, VMA and glslang, and MoltenVK
+    for iOS, which are downloaded into download/ (pinned versions, below) and built with the natives.
 
     Running from Gradle on a simulator:
 
@@ -132,6 +147,40 @@ class Main is NetworkRequestListener, ProcessListener
     constant text WIL_ZIP_NAME = "wil-v1.0.260126.7.zip"
     constant text WIL_FOLDER = "wil-1.0.260126.7"
 
+    // Vulkan on iOS and Android (src/vulkan): Khronos' Vulkan headers, AMD's
+    // Vulkan Memory Allocator (VMA), and Khronos' glslang, which compiles the
+    // shaders; and for iOS, MoltenVK. All pinned; Apache 2.0, MIT or BSD
+    // licensed. MoltenVK's full package is used, since its iOS package has no
+    // simulator slice.
+    constant text VULKAN_HEADERS_ZIP = "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/vulkan-sdk-1.4.363.0.zip"
+    constant text VULKAN_HEADERS_ZIP_NAME = "Vulkan-Headers-vulkan-sdk-1.4.363.0.zip"
+    constant text VULKAN_HEADERS_FOLDER = "Vulkan-Headers-vulkan-sdk-1.4.363.0"
+    constant text VMA_ZIP = "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/refs/tags/v3.4.0.zip"
+    constant text VMA_ZIP_NAME = "VulkanMemoryAllocator-3.4.0.zip"
+    constant text VMA_FOLDER = "VulkanMemoryAllocator-3.4.0"
+    constant text GLSLANG_ZIP = "https://github.com/KhronosGroup/glslang/archive/refs/tags/16.6.0.zip"
+    constant text GLSLANG_ZIP_NAME = "glslang-16.6.0.zip"
+    constant text GLSLANG_FOLDER = "glslang-16.6.0"
+    constant text MOLTENVK_TAR = "https://github.com/KhronosGroup/MoltenVK/releases/download/v1.4.2/MoltenVK-all.tar"
+    constant text MOLTENVK_TAR_NAME = "MoltenVK-1.4.2-all.tar"
+
+    // Android: Google's NDK, pinned (r30, a long-term support release). It's
+    // used from the Android SDK if Android Studio installed it there, and
+    // otherwise downloaded from where Android Studio's SDK Manager gets it,
+    // checked against Google's size and SHA-1 (Google's repository2-3.xml).
+    constant text NDK_VERSION = "30.0.16248370"
+    constant text NDK_FOLDER = "android-ndk-r30"
+    constant text NDK_MAC_ZIP = "https://dl.google.com/android/repository/android-ndk-r30-darwin.zip"
+    constant text NDK_MAC_ZIP_NAME = "android-ndk-r30-darwin.zip"
+    constant text NDK_MAC_SHA1 = "c060be96767eefbb8e0a27796d6f43115fc1a0c4"
+    constant integer NDK_MAC_SIZE = 974984488
+    constant text NDK_WINDOWS_ZIP = "https://dl.google.com/android/repository/android-ndk-r30-windows.zip"
+    constant text NDK_WINDOWS_ZIP_NAME = "android-ndk-r30-windows.zip"
+    constant text NDK_WINDOWS_SHA1 = "9bf167a1985fa7d4a036186b78f702eab9179408"
+    constant integer NDK_WINDOWS_SIZE = 727980788
+    constant text ANDROID_NAME = "libGameEngineCPlugins.so"
+    constant text ANDROID_FOLDER = "/mobile/android"
+
     // Homebrew's llvm (clang-cl) is keg-only: it isn't linked into
     // Homebrew's bin folder, so it's looked for here.
     constant text LLVM_FOLDER_ARM = "/opt/homebrew/opt/llvm/bin/"
@@ -158,6 +207,19 @@ class Main is NetworkRequestListener, ProcessListener
     boolean buildMac = true
     boolean buildWindows = true
     boolean buildIOS = true
+    boolean buildAndroid = true
+
+    // The Android natives are built with Google's NDK, which is under Google's
+    // Android SDK License (https://developer.android.com/studio/terms). If the
+    // NDK isn't in the Android SDK already, AutoBuild downloads it into
+    // download/ (never committed), but only if this is true, which accepts
+    // that license.
+    boolean acceptAndroidLicense = true
+
+    // The Android ABIs built, and the oldest Android the library runs on
+    // (android-35 is Android 15, Quorum's minimum).
+    Array<text> androidAbis
+    text androidPlatform = "android-35"
 
     // Building Windows.dll on a Mac needs Microsoft's Windows SDK and C
     // runtime, which xwin downloads under Microsoft's license (the files go
@@ -171,7 +233,9 @@ class Main is NetworkRequestListener, ProcessListener
     // Studio's C++ Build Tools (with ATL) are several gigabytes and need an
     // administrator's permission, so they're only installed if this is true.
     boolean installVisualStudioBuildTools = false
-    text iosVersion = "14.0"
+
+    // The oldest iOS the iOS library runs on. MoltenVK, for Vulkan, needs 15.
+    text iosVersion = "15.0"
 
     // The oldest macOS the Mac library loads on. Without it, the compiler uses
     // the building Mac's own version, and older Macs refuse the library.
@@ -196,11 +260,17 @@ class Main is NetworkRequestListener, ProcessListener
     text brew = ""
     text cmake = ""
 
-    // Set when the Windows build is skipped rather than failed, with the reason.
+    // Set when the Windows or Android build is skipped rather than failed, with the reason.
     text windowsSkipped = ""
+    text androidSkipped = ""
 
     // One line per platform, printed at the end.
     Array<text> summary
+
+    on create
+        androidAbis:Add("arm64-v8a")
+        androidAbis:Add("x86_64")
+    end
 
     action Main
         Properties prop
@@ -219,6 +289,25 @@ class Main is NetworkRequestListener, ProcessListener
             output "Downloading WIL"
             Download(WIL_ZIP, WIL_ZIP_NAME)
             Deflate(WIL_ZIP_NAME, DOWNLOADS + "/" + WIL_FOLDER, DOWNLOADS + "/wil")
+        end
+
+        // Vulkan on iOS and Android (src/vulkan).
+        if (prop:IsMac() and buildIOS) or buildAndroid
+            output "Downloading the Vulkan headers, VMA and glslang"
+            Download(VULKAN_HEADERS_ZIP, VULKAN_HEADERS_ZIP_NAME)
+            Deflate(VULKAN_HEADERS_ZIP_NAME, DOWNLOADS + "/" + VULKAN_HEADERS_FOLDER, DOWNLOADS + "/vulkan-headers")
+            Download(VMA_ZIP, VMA_ZIP_NAME)
+            Deflate(VMA_ZIP_NAME, DOWNLOADS + "/" + VMA_FOLDER, DOWNLOADS + "/vma")
+            Download(GLSLANG_ZIP, GLSLANG_ZIP_NAME)
+            Deflate(GLSLANG_ZIP_NAME, DOWNLOADS + "/" + GLSLANG_FOLDER, DOWNLOADS + "/glslang")
+        end
+        if prop:IsMac() and buildIOS
+            // The package unpacks into a folder named MoltenVK, which is
+            // moved to download/moltenvk-package (a Mac's disk ignores case, so
+            // it couldn't be moved to "moltenvk").
+            output "Downloading MoltenVK (about 180 MB)"
+            Download(MOLTENVK_TAR, MOLTENVK_TAR_NAME)
+            Deflate(MOLTENVK_TAR_NAME, DOWNLOADS + "/MoltenVK", DOWNLOADS + "/moltenvk-package")
         end
 
         DoPlatformBuild()
@@ -307,9 +396,369 @@ class Main is NetworkRequestListener, ProcessListener
                 summary:Add("iOS: FAILED (see above)")
             end
         end
+        if buildAndroid
+            AddAndroidResult()
+        end
         if buildWebNatives
             AddWebResult()
         end
+    end
+
+    /*
+        Builds the Android natives, and adds how it went to the summary.
+    */
+    action AddAndroidResult
+        if DoAndroid()
+            summary:Add("Android: built (test it on a phone or the emulator before shipping)")
+        elseif androidSkipped not= ""
+            summary:Add("Android: skipped. " + androidSkipped)
+        else
+            summary:Add("Android: FAILED (see above)")
+        end
+    end
+
+    /*
+        Builds libGameEngineCPlugins.so for each Android ABI with Google's
+        NDK (its CMake toolchain, with Ninja), checks each, and copies them to
+        the standard library's Native/mobile/android/<ABI>. The C++ library is
+        linked in (c++_static), so each ABI is one file.
+    */
+    action DoAndroid returns boolean
+        output "=== Android ==="
+        text ndk = GetNdk()
+        if ndk = ""
+            return false
+        end
+        text ninja = FindNinja()
+        if ninja = ""
+            return false
+        end
+
+        File toolchain
+        toolchain:SetAbsolutePath(ndk + "/build/cmake/android.toolchain.cmake")
+        i = 0
+        repeat while i < androidAbis:GetSize()
+            text abi = androidAbis:Get(i)
+            text folder = "build/android-" + abi
+            Array<text> options
+            options:Add("-G")
+            options:Add("Ninja")
+            options:Add("-DCMAKE_MAKE_PROGRAM=" + ninja)
+            options:Add("-DCMAKE_TOOLCHAIN_FILE=" + toolchain:GetAbsolutePath())
+            options:Add("-DANDROID_ABI=" + abi)
+            options:Add("-DANDROID_PLATFORM=" + androidPlatform)
+            options:Add("-DANDROID_STL=c++_static")
+            if not BuildWithCMake(folder, options)
+                return false
+            end
+            if not CheckAndroidLibrary(ndk, folder + "/" + ANDROID_NAME, abi)
+                return false
+            end
+            CopyToStandardLibrary("../" + folder + "/" + ANDROID_NAME, ANDROID_FOLDER + "/" + abi, ANDROID_NAME)
+            i = i + 1
+        end
+        return true
+    end
+
+    /*
+        Finds Google's NDK, version NDK_VERSION: in the Android SDK (where
+        Android Studio's SDK Manager installs it), in ANDROID_NDK_HOME, or in
+        download/ from an earlier run. If it isn't anywhere, it's downloaded
+        into download/ when acceptAndroidLicense is true. Returns its folder,
+        or "".
+    */
+    action GetNdk returns text
+        Properties prop
+        Array<text> candidates
+        text sdk = GetAndroidSdk()
+        if sdk not= ""
+            candidates:Add(sdk + "/ndk/" + NDK_VERSION)
+        end
+        text home = prop:GetEnvironmentVariable("ANDROID_NDK_HOME")
+        if home not= ""
+            candidates:Add(home)
+        end
+        File downloaded
+        downloaded:SetPath(DOWNLOADS + "/" + NDK_FOLDER)
+        candidates:Add(downloaded:GetAbsolutePath())
+
+        i = 0
+        repeat while i < candidates:GetSize()
+            if IsNdk(candidates:Get(i))
+                output "Using the NDK in " + candidates:Get(i)
+                return candidates:Get(i)
+            end
+            i = i + 1
+        end
+
+        if not acceptAndroidLicense
+            output "The Android natives are built with Google's NDK " + NDK_VERSION + " (r30), which wasn't found."
+            output "It's under Google's Android SDK License: https://developer.android.com/studio/terms"
+            output "To accept it and have AutoBuild download the NDK (about 1 GB, into download/, which git ignores),"
+            output "set acceptAndroidLicense to true at the top of AutoBuild's Main.quorum. Or install NDK " + NDK_VERSION
+            output "with Android Studio's SDK Manager (SDK Tools, NDK (Side by side), Show Package Details)."
+            androidSkipped = "Google's license for the NDK hasn't been accepted (see above)."
+            return ""
+        end
+
+        if not DownloadNdk()
+            return ""
+        end
+        if IsNdk(downloaded:GetAbsolutePath())
+            return downloaded:GetAbsolutePath()
+        end
+        output "The NDK was unpacked, but " + downloaded:GetAbsolutePath() + " isn't NDK " + NDK_VERSION + "."
+        return ""
+    end
+
+    /*
+        Returns true if the folder holds NDK NDK_VERSION: its CMake toolchain,
+        and its version in source.properties.
+    */
+    action IsNdk(text folder) returns boolean
+        File toolchain
+        toolchain:SetAbsolutePath(folder + "/build/cmake/android.toolchain.cmake")
+        if not toolchain:Exists()
+            return false
+        end
+        File properties
+        properties:SetAbsolutePath(folder + "/source.properties")
+        if not properties:Exists()
+            return false
+        end
+        text contents = properties:Read()
+        return contents:Contains(NDK_VERSION)
+    end
+
+    /*
+        The Android SDK's folder: from ANDROID_HOME or ANDROID_SDK_ROOT, or
+        where Android Studio puts it. Returns "" if there's none.
+    */
+    action GetAndroidSdk returns text
+        Properties prop
+        Array<text> candidates
+        candidates:Add(prop:GetEnvironmentVariable("ANDROID_HOME"))
+        candidates:Add(prop:GetEnvironmentVariable("ANDROID_SDK_ROOT"))
+        if prop:IsWindows()
+            text localAppData = prop:GetEnvironmentVariable("LOCALAPPDATA")
+            if localAppData not= ""
+                candidates:Add(localAppData + "/Android/Sdk")
+            end
+        else
+            candidates:Add(prop:GetProperty("user.home") + "/Library/Android/sdk")
+        end
+
+        i = 0
+        repeat while i < candidates:GetSize()
+            text candidate = candidates:Get(i)
+            if candidate not= ""
+                File folder
+                folder:SetAbsolutePath(candidate)
+                if folder:Exists()
+                    return candidate
+                end
+            end
+            i = i + 1
+        end
+        return ""
+    end
+
+    /*
+        Downloads the NDK's zip for this computer into download/, checks its
+        size and SHA-1 against Google's, and unpacks it into
+        download/android-ndk-r30. The Mac's is unpacked with unzip, which keeps
+        the NDK's symbolic links and executable files; Windows' with tar, which
+        unpacks zip files there.
+    */
+    action DownloadNdk returns boolean
+        Properties prop
+        boolean windows = prop:IsWindows()
+        text url = NDK_MAC_ZIP
+        text name = NDK_MAC_ZIP_NAME
+        text sha1 = NDK_MAC_SHA1
+        integer size = NDK_MAC_SIZE
+        if windows
+            url = NDK_WINDOWS_ZIP
+            name = NDK_WINDOWS_ZIP_NAME
+            sha1 = NDK_WINDOWS_SHA1
+            size = NDK_WINDOWS_SIZE
+        end
+
+        File zip
+        zip:SetPath(DOWNLOADS + "/" + name)
+        // A download that was cut off is deleted and fetched again.
+        if zip:Exists() and zip:GetFileSize() not= size
+            output "download/" + name + " is incomplete, so it will be downloaded again."
+            zip:Delete()
+        end
+        output "Downloading Google's NDK " + NDK_VERSION + " (about 1 GB; the first time takes a while)"
+        Download(url, name)
+        if not zip:Exists() or zip:GetFileSize() not= size
+            output "The NDK's download didn't finish. Run AutoBuild again to try again."
+            return false
+        end
+        if not CheckSha1(zip, sha1)
+            return false
+        end
+
+        // A folder from an unpacking that was cut off is removed first.
+        File unpacked
+        unpacked:SetPath(DOWNLOADS + "/" + NDK_FOLDER)
+        if unpacked:Exists()
+            unpacked:Delete(true)
+        end
+        File downloads
+        downloads:SetPath(DOWNLOADS)
+        File root
+        root:SetPath("..")
+        Array<text> parameters
+        if windows
+            parameters:Add("-xf")
+            parameters:Add(zip:GetAbsolutePath())
+            parameters:Add("-C")
+            parameters:Add(downloads:GetAbsolutePath())
+            return RunStep("Unpacking the NDK (2 to 3 GB)", "tar", parameters, root)
+        else
+            parameters:Add("-q")
+            parameters:Add(zip:GetAbsolutePath())
+            parameters:Add("-d")
+            parameters:Add(downloads:GetAbsolutePath())
+            return RunStep("Unpacking the NDK (2 to 3 GB)", "/usr/bin/unzip", parameters, root)
+        end
+    end
+
+    /*
+        Checks a download's SHA-1 with the system's own tool: shasum on a Mac,
+        certutil on Windows. If it doesn't match, the file is deleted.
+    */
+    action CheckSha1(File file, text expected) returns boolean
+        Properties prop
+        File root
+        root:SetPath("..")
+        Array<text> parameters
+        text program = "/usr/bin/shasum"
+        if prop:IsWindows()
+            program = "certutil"
+            parameters:Add("-hashfile")
+            parameters:Add(file:GetAbsolutePath())
+            parameters:Add("SHA1")
+        else
+            parameters:Add("-a")
+            parameters:Add("1")
+            parameters:Add(file:GetAbsolutePath())
+        end
+        if not RunStep("Checking the download's SHA-1", program, parameters, root)
+            return false
+        end
+
+        // certutil may print the hash with spaces between the bytes.
+        i = 0
+        repeat while i < lastOutput:GetSize()
+            text line = lastOutput:Get(i)
+            line = line:ToLowerCase()
+            line = line:Replace(" ", "")
+            if line:Contains(expected)
+                return true
+            end
+            i = i + 1
+        end
+        output "The download's SHA-1 isn't Google's (" + expected + "), so it was deleted. Run AutoBuild again."
+        file:Delete()
+        return false
+    end
+
+    /*
+        Checks a built Android library with the NDK's llvm-objdump: that it's
+        for the right processor, and that its memory segments are aligned to
+        16 KB or more, which Google Play requires. Also prints how many JNI
+        functions it exports.
+    */
+    action CheckAndroidLibrary(text ndk, text path, text abi) returns boolean
+        Properties prop
+        text host = "darwin-x86_64"
+        text extension = ""
+        if prop:IsWindows()
+            host = "windows-x86_64"
+            extension = ".exe"
+        end
+        File objdump
+        objdump:SetAbsolutePath(ndk + "/toolchains/llvm/prebuilt/" + host + "/bin/llvm-objdump" + extension)
+        if not objdump:Exists()
+            output "The NDK's llvm-objdump wasn't found, so " + path + " wasn't checked."
+            return true
+        end
+
+        File root
+        root:SetPath("..")
+        Array<text> parameters
+        parameters:Add("-p")
+        parameters:Add("-T")
+        parameters:Add(path)
+        if not RunStep("Checking " + path, objdump:GetAbsolutePath(), parameters, root)
+            return false
+        end
+
+        text format = "elf64-littleaarch64"
+        if abi = "x86_64"
+            format = "elf64-x86-64"
+        end
+        boolean formatFound = false
+        integer functions = 0
+        integer smallAlignments = 0
+        i = 0
+        repeat while i < lastOutput:GetSize()
+            text line = lastOutput:Get(i)
+            if line:Contains(format)
+                formatFound = true
+            end
+            if line:Contains("Java_")
+                functions = functions + 1
+            end
+            if line:Contains("LOAD") and line:Contains("align 2**")
+                if line:Contains("align 2**12") or line:Contains("align 2**13") or line:Contains("align 2**0 ") or line:Contains("align 2**2 ") or line:Contains("align 2**3 ")
+                    smallAlignments = smallAlignments + 1
+                end
+            end
+            i = i + 1
+        end
+        if not formatFound
+            output path + " isn't for " + abi + " (no " + format + " in llvm-objdump's output)."
+            return false
+        end
+        if smallAlignments > 0
+            output path + " has memory segments aligned to less than 16 KB, which Google Play refuses."
+            return false
+        end
+        output path + " (" + abi + ") exports " + functions + " JNI functions, with 16 KB alignment."
+        return true
+    end
+
+    /*
+        Finds Ninja, the build tool the NDK's CMake toolchain uses: with
+        Homebrew on a Mac, downloaded into download/ on Windows. Returns its
+        path, or "".
+    */
+    action FindNinja returns text
+        Properties prop
+        if not prop:IsWindows()
+            return FindTool("ninja", "ninja")
+        end
+
+        File ninja
+        ninja:SetPath(DOWNLOADS + "/ninja.exe")
+        if not ninja:Exists()
+            output "Downloading Ninja"
+            Download(NINJA_WINDOWS_ZIP, NINJA_WINDOWS_ZIP_NAME)
+            File zip
+            zip:SetPath(DOWNLOADS + "/" + NINJA_WINDOWS_ZIP_NAME)
+            Decompresser decompresser
+            decompresser:DecompressZip(zip)
+        end
+        if not ninja:Exists()
+            output "Ninja couldn't be downloaded into " + ninja:GetAbsolutePath() + "."
+            return ""
+        end
+        return ninja:GetAbsolutePath()
     end
 
     /*
@@ -632,8 +1081,15 @@ class Main is NetworkRequestListener, ProcessListener
         File destination
         destination:SetPath(STANDARD_LIBRARY_NATIVE + folder)
         if not destination:Exists()
-            output "Standard library folder not found, skipping the copy: " + STANDARD_LIBRARY_NATIVE + folder
-            return now
+            // A new folder (such as mobile/android/<ABI>) is made, as long as
+            // the standard library is where it's expected.
+            File nativeFolder
+            nativeFolder:SetPath(STANDARD_LIBRARY_NATIVE)
+            if not nativeFolder:Exists()
+                output "Standard library folder not found, skipping the copy: " + STANDARD_LIBRARY_NATIVE + folder
+                return now
+            end
+            destination:CreateDirectories()
         end
         File to
         to:SetPath(STANDARD_LIBRARY_NATIVE + folder + "/" + name)
@@ -750,11 +1206,11 @@ class Main is NetworkRequestListener, ProcessListener
     end
 
     /*
-        On Windows, only the Windows DLL can be built: the Mac and iOS
-        natives need Apple's compilers and SDKs, which only run on a Mac.
-        The DLL is built with the same CMakeLists.txt as on a Mac, with
-        Visual Studio's C++ tools and ATL. CMake is installed with winget
-        if it's missing.
+        On Windows, the Windows DLL and the Android natives can be built:
+        the Mac and iOS natives need Apple's compilers and SDKs, which only
+        run on a Mac. The DLL is built with the same CMakeLists.txt as on a
+        Mac, with Visual Studio's C++ tools and ATL. CMake is installed with
+        winget if it's missing.
     */
     action DoWindowsHost
         cmake = FindWindowsCMake()
@@ -769,6 +1225,9 @@ class Main is NetworkRequestListener, ProcessListener
             else
                 summary:Add("Windows: FAILED (see above)")
             end
+        end
+        if buildAndroid
+            AddAndroidResult()
         end
         if buildWebNatives
             AddWebResult()
@@ -954,6 +1413,13 @@ class Main is NetworkRequestListener, ProcessListener
             return now
         end
 
+        File downloaded
+        downloaded:SetPath(DOWNLOADS + "/" + name)
+        if not downloaded:Exists()
+            output "Not unpacking " + name + ", since it wasn't downloaded."
+            return now
+        end
+
         File fileFrom
         fileFrom:SetPath(from)
 
@@ -1045,6 +1511,9 @@ class Main is NetworkRequestListener, ProcessListener
         NetworkRequest request
         request:SetRequestTypeToGet()
         request:AddHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:96.0) Gecko/20100101 Firefox/96.0")
+        // GitHub's release downloads (MoltenVK, Ninja) refuse Java's default
+        // Accept header with "406 Not Acceptable".
+        request:AddHeader("Accept", "*/*")
 
         request:SetWebAddress(url)
         request:SetDownloadFile(downloads)

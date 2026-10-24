@@ -1,17 +1,18 @@
 # quorum-natives
 
-The C and C++ native libraries for the Quorum programming language, called from Java through JNI: for the game engine, image loading (stb_image), fonts (FreeType), and buffer and matrix helpers; text to speech on the Mac, iOS and Windows; and, on Windows, accessibility (UI Automation). The finished libraries are copied into the standard library in `quorum-language/Quorum/Library/Standard/Native`.
+The C and C++ native libraries for the Quorum programming language, called from Java through JNI: for the game engine, image loading (stb_image), fonts (FreeType), and buffer and matrix helpers; text to speech on the Mac, iOS and Windows; on Windows, accessibility (UI Automation); and on iOS and Android, Quorum's own Vulkan layer (`src/vulkan`). The finished libraries are copied into the standard library in `quorum-language/Quorum/Library/Standard/Native`.
 
 | Platform | File | Where it goes in `Native/` |
 |---|---|---|
 | Mac, Apple Silicon and Intel (one universal file) | `Mac.so` | `Libraries.Game` |
 | Windows, 64-bit: the game natives, accessibility and speech | `Windows.dll` | `Libraries.Game` |
-| iPhone and iPad | `ios.a` | `mobile` |
-| iOS Simulator | `iosSimulator.a` | `mobile` |
+| iPhone and iPad (with MoltenVK and glslang) | `ios.a` | `mobile` |
+| iOS Simulator (with MoltenVK and glslang) | `iosSimulator.a` | `mobile` |
+| Android phones (`arm64-v8a`) and the emulator on Intel (`x86_64`) | `libGameEngineCPlugins.so` | `mobile/android/<ABI>` |
 
 ## Building everything on a Mac (recommended)
 
-One run of the AutoBuild project builds the Mac, Windows, iOS and web natives and copies them into the standard library.
+One run of the AutoBuild project builds the Mac, Windows, iOS, Android and web natives and copies them into the standard library.
 
 **Install these once:**
 1. **Homebrew** (https://brew.sh). Its installer asks for your password, so it can't be installed for you:
@@ -32,9 +33,11 @@ xwin --cache-dir download/xwin-cache --arch x86_64 splat --output download/xwin
 
 or set `acceptMicrosoftLicense` to `true` in `Main.quorum`. Until one of these is done, AutoBuild skips Windows and says why.
 
+**For Android, once:** the Android natives are built with Google's NDK r30 (`30.0.16248370`). If Android Studio's SDK Manager installed it in the Android SDK, AutoBuild uses it. Otherwise AutoBuild downloads it into `download/android-ndk-r30` (about 1 GB, 2 to 3 GB unpacked) from where the SDK Manager gets it, checking Google's size and SHA-1. The NDK is under Google's Android SDK License (https://developer.android.com/studio/terms), so AutoBuild only downloads it when `acceptAndroidLicense` is `true` in `Main.quorum`. Until then, or until the NDK is installed, AutoBuild skips Android and says why.
+
 **Then:**
 1. Keep `quorum-natives` and `quorum-language` in the same folder. The finished files are copied to `../quorum-language/Quorum/Library/Standard/Native`.
-2. Open the project `AutoBuild` in Quorum Studio and run it. The first run downloads FreeType, the Windows JDK's headers and WIL, and takes a few minutes. Later runs only rebuild what changed.
+2. Open the project `AutoBuild` in Quorum Studio and run it. The first run downloads FreeType, the Windows JDK's headers and WIL, and for iOS and Android, the Vulkan headers, VMA, glslang and MoltenVK (about 180 MB), and takes a few minutes. Later runs only rebuild what changed.
 3. At the end, a summary lists which platforms built and which failed. A failed step stops only its own platform, and prints the last 40 lines of the tool's output.
 4. Rebuild the standard library as usual.
 
@@ -47,7 +50,11 @@ or set `acceptMicrosoftLicense` to `true` in `Main.quorum`. Until one of these i
 | `buildWindows` | `true` | Builds `Windows.dll`: cross-compiled on a Mac with clang-cl, or built on Windows with Visual Studio. |
 | `acceptMicrosoftLicense` | `false` | On a Mac: lets AutoBuild run xwin with `--accept-license`, accepting Microsoft's license for the Windows SDK and C runtime. |
 | `buildIOS` | `true` | Builds the iOS device and simulator libraries. |
-| `iosVersion` | `"14.0"` | The oldest iOS the libraries support. |
+| `iosVersion` | `"15.0"` | The oldest iOS the libraries support (MoltenVK needs 15). |
+| `buildAndroid` | `true` | Builds the Android libraries, on a Mac or Windows. |
+| `acceptAndroidLicense` | `false` | Lets AutoBuild download Google's NDK, accepting the Android SDK License, if the NDK isn't in the Android SDK. |
+| `androidAbis` | `arm64-v8a`, `x86_64` | The Android ABIs built (set in `on create`). |
+| `androidPlatform` | `"android-35"` | The oldest Android the library runs on (Android 15). |
 | `installVisualStudioBuildTools` | `false` | On Windows only: install the Visual Studio Build Tools, with ATL, with `winget` if they're not found. |
 | `buildWebNatives` | `true` | Builds the web module (WebAssembly) with Emscripten, on a Mac or Windows. The first time downloads Emscripten (about 1 GB). |
 | `copyToStandardLibrary` | `true` | Copies the results into the standard library. If false, they stay in `build/`. |
@@ -63,7 +70,8 @@ Everything is built from the `CMakeLists.txt` in the root folder, one build fold
 |---|---|---|
 | Mac | `build/mac` | One build for both `arm64` and `x86_64`, with FreeType built in, giving one universal file, `Mac.so`. `lipo -verify_arch` checks it has both. macOS loads the half that matches the running Java. |
 | Windows | `build/windows-clang` | Cross-compiled with `clang-cl` and `lld-link` (`toolchains/clang-cl-xwin.cmake`), using Microsoft's Windows SDK and C runtime from `xwin`, with the C runtime linked in (`/MT`). xwin has no ATL, so the speech code uses the stand-ins in `src/windows/speech/atl` (`QUORUM_ATL_STANDIN`). |
-| iOS | `build/ios-device`, `build/ios-simulator` | `CMAKE_SYSTEM_NAME=iOS`. Static libraries with the natives, `src/ios`, and FreeType merged in (`liballnatives.a`). |
+| iOS | `build/ios-device`, `build/ios-simulator` | `CMAKE_SYSTEM_NAME=iOS`. Static libraries with the natives, `src/ios`, `src/vulkan`, and FreeType, glslang and MoltenVK (the slice for phones or the simulator) merged in (`liballnatives.a`). The app links Metal and IOSurface for MoltenVK (Quorum Studio's `robovm.xml`). |
+| Android | `build/android-arm64-v8a`, `build/android-x86_64` | The NDK's CMake toolchain, with Ninja. One shared library per ABI with the natives, `src/vulkan`, FreeType and glslang, and the C++ library linked in (`c++_static`), linked to the phone's own `libvulkan.so`. `llvm-objdump` checks the processor, and that the library's memory segments are aligned to 16 KB, which Google Play requires. |
 
 The same builds from Terminal, from the root of `quorum-natives`:
 
@@ -83,6 +91,28 @@ cmake -S . -B build/ios-device -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphon
 
 For the simulator, use `-DCMAKE_OSX_SYSROOT=iphonesimulator "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"` and `build/ios-simulator`.
 
+```bash
+cmake -S . -B build/android-arm64-v8a -G Ninja -DCMAKE_TOOLCHAIN_FILE=<ndk>/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-35 -DANDROID_STL=c++_static && cmake --build build/android-arm64-v8a
+```
+
+(iOS and Android need `download/vulkan-headers`, `download/vma` and `download/glslang`, and iOS `download/moltenvk-package`, which AutoBuild downloads.)
+
+### Vulkan on iOS and Android (`src/vulkan`)
+
+The desktop draws with Vulkan through LWJGL, which doesn't run on iOS or Android. There, each Vulkan class in the plugins uses a native strategy (`plugins.quorum.Libraries.Game.Graphics.Vulkan.Native` in `quorum-language`), whose C is in `src/vulkan` and calls Vulkan directly: MoltenVK on iOS, the phone's own Vulkan on Android.
+
+| File | What |
+|---|---|
+| `NativeVulkan.h`, `.cpp` | Helpers: handles as Java longs, Java arrays, the log (logcat's "Quorum Vulkan" on Android, the console on iOS). |
+| `NativeVulkanCore.cpp` | The instance, the GPU and its features and limits, the device, queues, surfaces (Metal or Android), the swapchain, presenting. |
+| `NativeVulkanResources.cpp` | Command pools and buffers, fences, semaphores, image views, framebuffers, samplers, render passes, descriptors, pipelines. |
+| `NativeVulkanMemory.cpp` | VMA (compiled here), buffers and images. |
+| `NativeVulkanCommands.cpp` | Recording commands. |
+| `NativeVulkanShaders.cpp` | glslang, compiling GLSL to SPIR-V as shaderc does on the desktop, and shader modules. |
+| `NativeVulkanFeatureTable.h`, `NativeVulkanLimitTable.h` | Generated from the plugins' `VulkanPhysicalDeviceFeatures` and `VulkanPhysicalDeviceLimits`, with their Java counterparts: regenerate both together if those change. |
+
+When the GPU is chosen, its name, Vulkan version, and the features Quorum's renderer uses are written to the log, which helps when a device can't run Quorum.
+
 ### Troubleshooting
 
 - **"download/freetype/CMakeLists.txt is the iOS build's copy":** an older iOS build replaced FreeType's own CMakeLists.txt. AutoBuild fixes this itself by extracting FreeType again. By hand, delete `download/freetype` and run AutoBuild.
@@ -100,7 +130,7 @@ The plans and history for this build are in the plans repository, `plans/Plans/N
 
 ## Building on Windows
 
-On Windows, AutoBuild builds **`Windows.dll`** only. The Mac and iOS natives need Apple's compilers and SDKs, which only run on a Mac, so they're skipped (the summary says so).
+On Windows, AutoBuild builds **`Windows.dll`** and the **Android** natives. The Mac and iOS natives need Apple's compilers and SDKs, which only run on a Mac, so they're skipped (the summary says so). Android works as on a Mac: the NDK from the Android SDK, or downloaded once `acceptAndroidLicense` is set, and Ninja, downloaded into `download/ninja.exe`.
 
 **Install these once:**
 1. **Quorum Studio**, to run AutoBuild.
