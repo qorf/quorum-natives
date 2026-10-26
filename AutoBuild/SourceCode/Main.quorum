@@ -219,7 +219,7 @@ class Main is NetworkRequestListener, ProcessListener
     // The Android ABIs built, and the oldest Android the library runs on
     // (android-35 is Android 15, Quorum's minimum).
     Array<text> androidAbis
-    text androidPlatform = "android-35"
+    text androidPlatform = "android-34"
 
     // Building Windows.dll on a Mac needs Microsoft's Windows SDK and C
     // runtime, which xwin downloads under Microsoft's license (the files go
@@ -382,7 +382,7 @@ class Main is NetworkRequestListener, ProcessListener
         end
         if buildWindows
             if DoWindowsOnMac()
-                summary:Add("Windows: built (test it on Windows before shipping)")
+                summary:Add("Windows: built")
             elseif windowsSkipped not= ""
                 summary:Add("Windows: skipped. " + windowsSkipped)
             else
@@ -409,7 +409,7 @@ class Main is NetworkRequestListener, ProcessListener
     */
     action AddAndroidResult
         if DoAndroid()
-            summary:Add("Android: built (test it on a phone or the emulator before shipping)")
+            summary:Add("Android: built")
         elseif androidSkipped not= ""
             summary:Add("Android: skipped. " + androidSkipped)
         else

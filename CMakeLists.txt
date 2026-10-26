@@ -13,7 +13,7 @@ cmake_minimum_required(VERSION 3.18)
 #   iOS:     cmake -S . -B build/ios -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos -DCMAKE_OSX_ARCHITECTURES=arm64
 #            (liballnatives.a; use iphonesimulator and "arm64;x86_64" for the simulator)
 #   Android: cmake -S . -B build/android-arm64-v8a -G Ninja -DCMAKE_TOOLCHAIN_FILE=<ndk>/build/cmake/android.toolchain.cmake
-#                  -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-35 -DANDROID_STL=c++_static
+#                  -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-34 -DANDROID_STL=c++_static
 #            (libGameEngineCPlugins.so; once per ABI, x86_64 too)
 #   Web:     emcmake cmake -S . -B build/web, with Emscripten's environment set up
 #            (load.js, load.wasm and load.data, the fonts; AutoBuild does this)
@@ -222,7 +222,7 @@ if (QUORUM_IOS OR QUORUM_ANDROID)
         "${QUORUM_GLSLANG}"
         src/vulkan)
     # VMA uses at most Vulkan 1.3's functions, Quorum's minimum: Android's
-    # Vulkan library has them from Android 13, so they link on Android 15.
+    # Vulkan library has them from Android 13, so they link on Android 14.
     target_compile_definitions(GameEngineCPlugins PRIVATE
         VMA_STATIC_VULKAN_FUNCTIONS=1
         VMA_DYNAMIC_VULKAN_FUNCTIONS=0
