@@ -1,0 +1,23 @@
+package Libraries.Build
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+
+/*
+    BuildBehavior is what AutoBuild's Build button does: it starts the build
+    in the window. A button reports being pressed only through its behavior,
+    so the button needs one.
+*/
+class BuildBehavior is Behavior
+    AutoBuildWindow window = undefined
+
+    action SetWindow(AutoBuildWindow window)
+        me:window = window
+    end
+
+    action Run(BehaviorEvent event)
+        if window not= undefined
+            window:StartBuild()
+        end
+    end
+end

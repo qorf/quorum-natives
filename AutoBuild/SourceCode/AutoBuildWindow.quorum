@@ -1,0 +1,218 @@
+package Libraries.Build
+
+use Libraries.Game.DesktopConfiguration
+use Libraries.Game.Graphics.Label
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Controls.Checkbox
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.Forms.Form
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Forms.Grouping
+use Libraries.System.File
+use Libraries.System.Properties
+use Libraries.Containers.Array
+
+/*
+    AutoBuildWindow is AutoBuild's window. It is a form: a banner, then a
+    grouping for the platforms to build, one for the licenses the downloads
+    need, one for the options, and one for how the build went, with the
+    Build button at the bottom. How each platform is built is described in
+    Main.
+
+    Every platform this computer can build is checked at first: Mac,
+    Windows, iOS, Android and the web on a Mac, and Windows, Android and the
+    web on Windows. Uncheck the ones to leave out. The choices are kept in
+    Settings.txt for the next time.
+
+    The build runs in this program, so the window stops responding until
+    it's done; a first build downloads several gigabytes. What it's doing
+    shows in Quorum Studio's output, and how each platform went shows here
+    at the end.
+*/
+class AutoBuildWindow is Form
+    constant integer WIDTH = 960
+    constant integer HEIGHT = 940
+
+    // Rows for how each platform went: one per platform, and a line more.
+    constant integer RESULT_LINES = 6
+
+    // The build's settings, which it reads from Settings.txt.
+    Main builder
+    Properties properties
+    boolean onMac = false
+    boolean onWindows = false
+
+    Checkbox macBox
+    Checkbox windowsBox
+    Checkbox iosBox
+    Checkbox androidBox
+    Checkbox webBox
+    Checkbox androidLicenseBox
+    Checkbox microsoftLicenseBox
+    Checkbox visualStudioBox
+    Checkbox copyBox
+    Checkbox verboseBox
+    Button buildButton
+    Label statusLabel
+    TextBox resultsBox
+
+    boolean building = false
+
+    // The build starts a couple of frames after Build is pressed, so the
+    // window can say it won't respond before it stops.
+    integer framesUntilBuild = -1
+
+    action Open
+        onMac = properties:IsMac()
+        onWindows = properties:IsWindows()
+        File settings
+        settings:SetPath(builder:SETTINGS_FILE)
+        boolean firstTime = not settings:Exists()
+        builder:LoadSettings()
+
+        // The first time, every platform this computer can build is chosen,
+        // and the licenses wait to be accepted.
+        if firstTime
+            builder:acceptAndroidLicense = false
+            builder:acceptMicrosoftLicense = false
+        end
+
+        Page page = GetMainPage()
+        page:AddBanner("Quorum Natives AutoBuild", "Builds Quorum's native libraries and copies them into quorum-language's standard library.")
+
+        Grouping platforms = page:AddGrouping("Platforms")
+        platforms:SetTitle("What to build")
+        if onMac
+            macBox = platforms:AddCheckbox("Mac: Mac.so, for Apple Silicon and Intel")
+            windowsBox = platforms:AddCheckbox("Windows: Windows.dll, cross-compiled with clang-cl")
+            iosBox = platforms:AddCheckbox("iOS: needs the full Xcode")
+        elseif onWindows
+            windowsBox = platforms:AddCheckbox("Windows: Windows.dll, with Visual Studio's C++ tools")
+        end
+        androidBox = platforms:AddCheckbox("Android: with Google's NDK")
+        webBox = platforms:AddCheckbox("Web: with Emscripten (about 1 GB the first time)")
+
+        Grouping licenses = page:AddGrouping("Licenses")
+        licenses:SetTitle("Licenses")
+        androidLicenseBox = licenses:AddCheckbox("I accept Google's Android SDK License (developer.android.com/studio/terms), so the NDK can be downloaded")
+        if onMac
+            microsoftLicenseBox = licenses:AddCheckbox("I accept Microsoft's license for the Windows SDK and C runtime, which xwin downloads")
+        elseif onWindows
+            visualStudioBox = licenses:AddCheckbox("Install Visual Studio's C++ Build Tools if they're missing (several GB; asks an administrator)")
+        end
+
+        Grouping options = page:AddGrouping("Options")
+        options:SetTitle("Options")
+        copyBox = options:AddCheckbox("Copy the libraries into the standard library")
+        verboseBox = options:AddCheckbox("Show every tool's output in the log")
+
+        Grouping build = page:AddGrouping("Build")
+        build:SetTitle("Build")
+        statusLabel = build:AddLabel("Status", "Choose the platforms, then press Build.")
+        resultsBox = build:AddTextBox("How each platform went")
+        resultsBox:SetLayoutRows(RESULT_LINES)
+
+        Grouping buttons = page:AddGrouping("Buttons")
+        buildButton = buttons:AddButton("Build")
+        BuildBehavior behavior
+        behavior:SetWindow(me)
+        buildButton:SetBehavior(behavior)
+        buttons:PositionFromBottom()
+
+        DesktopConfiguration desktop = GetDesktopConfiguration()
+        desktop:title = "Quorum Natives AutoBuild"
+        desktop:resizable = true
+        Display(WIDTH, HEIGHT)
+    end
+
+    action CreateGame
+        parent:Form:CreateGame()
+        ShowSettings()
+    end
+
+    /*
+        Fills the controls in from the settings. This waits until the game is
+        running, as some controls tell the game's input about changes, and
+        there's no input before then.
+    */
+    action ShowSettings
+        if onMac
+            macBox:SetToggleState(builder:buildMac)
+            iosBox:SetToggleState(builder:buildIOS)
+            microsoftLicenseBox:SetToggleState(builder:acceptMicrosoftLicense)
+        elseif onWindows
+            visualStudioBox:SetToggleState(builder:installVisualStudioBuildTools)
+        end
+        windowsBox:SetToggleState(builder:buildWindows)
+        androidBox:SetToggleState(builder:buildAndroid)
+        webBox:SetToggleState(builder:buildWebNatives)
+        androidLicenseBox:SetToggleState(builder:acceptAndroidLicense)
+        copyBox:SetToggleState(builder:copyToStandardLibrary)
+        verboseBox:SetToggleState(builder:verbose)
+    end
+
+    action StartBuild
+        if building
+            return now
+        end
+        // Mac and iOS can only be built on a Mac.
+        builder:buildMac = onMac and macBox:GetToggleState()
+        builder:buildIOS = onMac and iosBox:GetToggleState()
+        builder:buildWindows = windowsBox:GetToggleState()
+        builder:buildAndroid = androidBox:GetToggleState()
+        builder:buildWebNatives = webBox:GetToggleState()
+        builder:acceptAndroidLicense = androidLicenseBox:GetToggleState()
+        builder:acceptMicrosoftLicense = onMac and microsoftLicenseBox:GetToggleState()
+        builder:installVisualStudioBuildTools = onWindows and visualStudioBox:GetToggleState()
+        builder:copyToStandardLibrary = copyBox:GetToggleState()
+        builder:verbose = verboseBox:GetToggleState()
+
+        if not builder:buildMac and not builder:buildIOS and not builder:buildWindows and not builder:buildAndroid and not builder:buildWebNatives
+            statusLabel:SetText("Choose at least one platform.")
+            return now
+        end
+        builder:SaveSettings()
+
+        building = true
+        resultsBox:SetText("")
+        statusLabel:SetText("Building. The window won't respond until it's done; Studio's output shows what it's doing.")
+        framesUntilBuild = 2
+    end
+
+    action Update(number seconds)
+        if framesUntilBuild <= 0
+            return now
+        end
+        framesUntilBuild = framesUntilBuild - 1
+        if framesUntilBuild = 0
+            framesUntilBuild = -1
+            builder:Build()
+            ShowResults(builder:GetSummary())
+            building = false
+        end
+    end
+
+    // Shows how each platform went, and whether they were all built.
+    action ShowResults(Array<text> summary)
+        text lineFeed = ""
+        lineFeed = lineFeed:GetLineFeed()
+        text results = ""
+        boolean allBuilt = true
+        integer i = 0
+        repeat while i < summary:GetSize()
+            text line = summary:Get(i)
+            results = results + line + lineFeed
+            if line:Contains("FAILED") or line:StartsWith("Nothing built")
+                allBuilt = false
+            end
+            i = i + 1
+        end
+        resultsBox:SetText(results)
+        if allBuilt
+            statusLabel:SetText("Done. Studio's output has the details.")
+        else
+            statusLabel:SetText("Done, but not everything was built. Studio's output says why.")
+        end
+    end
+end

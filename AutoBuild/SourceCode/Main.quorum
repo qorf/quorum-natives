@@ -200,21 +200,21 @@ class Main is NetworkRequestListener, ProcessListener
     constant text MOBILE_FOLDER = "/mobile"
     // Where the web module (load.js, load.wasm, load.data) goes.
     constant text STANDARD_LIBRARY_JAVASCRIPT = "../../quorum-language/Quorum/Library/Standard/Plugins/javascript"
-    boolean copyToStandardLibrary = true
+    public boolean copyToStandardLibrary = true
 
     // Which platforms a run on a Mac builds. Windows is cross-compiled
     // with clang-cl, and iOS needs the full Xcode, not only its command line tools.
-    boolean buildMac = true
-    boolean buildWindows = true
-    boolean buildIOS = true
-    boolean buildAndroid = true
+    public boolean buildMac = true
+    public boolean buildWindows = true
+    public boolean buildIOS = true
+    public boolean buildAndroid = true
 
     // The Android natives are built with Google's NDK, which is under Google's
     // Android SDK License (https://developer.android.com/studio/terms). If the
     // NDK isn't in the Android SDK already, AutoBuild downloads it into
     // download/ (never committed), but only if this is true, which accepts
     // that license.
-    boolean acceptAndroidLicense = true
+    public boolean acceptAndroidLicense = true
 
     // The Android ABIs built, and the oldest Android the library runs on
     // (android-35 is Android 15, Quorum's minimum).
@@ -227,12 +227,12 @@ class Main is NetworkRequestListener, ProcessListener
     // xwin's license question, so either set this to true to accept the
     // license, or run xwin once by hand in Terminal (README.md, or the
     // message AutoBuild prints).
-    boolean acceptMicrosoftLicense = false
+    public boolean acceptMicrosoftLicense = false
 
     // On Windows, CMake is installed with winget if it's missing. Visual
     // Studio's C++ Build Tools (with ATL) are several gigabytes and need an
     // administrator's permission, so they're only installed if this is true.
-    boolean installVisualStudioBuildTools = false
+    public boolean installVisualStudioBuildTools = false
 
     // The oldest iOS the iOS library runs on. MoltenVK, for Vulkan, needs 15.
     text iosVersion = "15.0"
@@ -244,9 +244,9 @@ class Main is NetworkRequestListener, ProcessListener
 
     // Builds the web module with Emscripten, on a Mac or Windows. The first
     // time, Emscripten is downloaded and installed (about 1 GB).
-    boolean buildWebNatives = true
+    public boolean buildWebNatives = true
 
-    boolean verbose = false
+    public boolean verbose = false
 
     number percent = 0
     boolean displayPercent = true
@@ -267,13 +267,31 @@ class Main is NetworkRequestListener, ProcessListener
     // One line per platform, printed at the end.
     Array<text> summary
 
+    // The window (AutoBuildWindow) keeps the settings above in this file in
+    // AutoBuild's folder, for the next time.
+    public constant text SETTINGS_FILE = "Settings.txt"
+
     on create
         androidAbis:Add("arm64-v8a")
         androidAbis:Add("x86_64")
     end
 
+    // Opens AutoBuild's window, where the platforms are chosen and built.
     action Main
+        AutoBuildWindow window
+        window:Open()
+    end
+
+    /*
+        Downloads what the chosen platforms need, builds each of them, and
+        prints how each went.
+    */
+    action Build
         Properties prop
+        // The window can build more than once.
+        summary:Empty()
+        windowsSkipped = ""
+        androidSkipped = ""
         output "Downloading FreeType"
         Download(FREETYPE, FREETYPE_NAME)
         RemoveIOSFreeType()
@@ -319,6 +337,71 @@ class Main is NetworkRequestListener, ProcessListener
             i = i + 1
         end
         output "Done"
+    end
+
+    /*
+        Reads Settings.txt, if there is one. Each line is "name = value".
+    */
+    action LoadSettings
+        File settings
+        settings:SetPath(SETTINGS_FILE)
+        if not settings:Exists()
+            return now
+        end
+        Array<text> lines = settings:Read():SplitIntoLines()
+        integer index = 0
+        repeat while index < lines:GetSize()
+            text line = lines:Get(index)
+            integer equals = line:IndexOf("=")
+            if equals > 0
+                text name = line:GetSubtext(0, equals):Trim()
+                boolean value = (line:GetSubtext(equals + 1):Trim() = "true")
+                if name = "mac"
+                    buildMac = value
+                elseif name = "windows"
+                    buildWindows = value
+                elseif name = "iOS"
+                    buildIOS = value
+                elseif name = "android"
+                    buildAndroid = value
+                elseif name = "web"
+                    buildWebNatives = value
+                elseif name = "acceptAndroidLicense"
+                    acceptAndroidLicense = value
+                elseif name = "acceptMicrosoftLicense"
+                    acceptMicrosoftLicense = value
+                elseif name = "installVisualStudioBuildTools"
+                    installVisualStudioBuildTools = value
+                elseif name = "copyToStandardLibrary"
+                    copyToStandardLibrary = value
+                elseif name = "verbose"
+                    verbose = value
+                end
+            end
+            index = index + 1
+        end
+    end
+
+    action SaveSettings
+        text lineFeed = ""
+        lineFeed = lineFeed:GetLineFeed()
+        text settingsText = "mac = " + buildMac + lineFeed
+            + "windows = " + buildWindows + lineFeed
+            + "iOS = " + buildIOS + lineFeed
+            + "android = " + buildAndroid + lineFeed
+            + "web = " + buildWebNatives + lineFeed
+            + "acceptAndroidLicense = " + acceptAndroidLicense + lineFeed
+            + "acceptMicrosoftLicense = " + acceptMicrosoftLicense + lineFeed
+            + "installVisualStudioBuildTools = " + installVisualStudioBuildTools + lineFeed
+            + "copyToStandardLibrary = " + copyToStandardLibrary + lineFeed
+            + "verbose = " + verbose + lineFeed
+        File settings
+        settings:SetPath(SETTINGS_FILE)
+        settings:Write(settingsText)
+    end
+
+    action GetSummary returns Array<text>
+        return summary
     end
 
     /*
@@ -495,7 +578,7 @@ class Main is NetworkRequestListener, ProcessListener
             output "The Android natives are built with Google's NDK " + NDK_VERSION + " (r30), which wasn't found."
             output "It's under Google's Android SDK License: https://developer.android.com/studio/terms"
             output "To accept it and have AutoBuild download the NDK (about 1 GB, into download/, which git ignores),"
-            output "set acceptAndroidLicense to true at the top of AutoBuild's Main.quorum. Or install NDK " + NDK_VERSION
+            output "check its box under Licenses in AutoBuild's window. Or install NDK " + NDK_VERSION
             output "with Android Studio's SDK Manager (SDK Tools, NDK (Side by side), Show Package Details)."
             androidSkipped = "Google's license for the NDK hasn't been accepted (see above)."
             return ""
@@ -924,7 +1007,7 @@ class Main is NetworkRequestListener, ProcessListener
             output "under Microsoft's license (about 1.5 GB, into download/xwin, which git ignores)."
             output "To read and accept the license, run this once in Terminal, then run AutoBuild again:"
             output "    cd " + root:GetAbsolutePath() + " && xwin --cache-dir download/xwin-cache --arch x86_64 splat --output download/xwin"
-            output "Or set acceptMicrosoftLicense to true at the top of AutoBuild's Main.quorum."
+            output "Or check its box under Licenses in AutoBuild's window."
             windowsSkipped = "Microsoft's license for the Windows SDK hasn't been accepted (see above)."
             return false
         end
@@ -1349,8 +1432,8 @@ class Main is NetworkRequestListener, ProcessListener
 
         output "Visual Studio's C++ tools with ATL weren't found. Install Visual Studio, or its Build Tools,"
         output "with the 'Desktop development with C++' workload and 'C++ ATL for latest build tools'"
-        output "(https://visualstudio.microsoft.com/downloads), or set installVisualStudioBuildTools to true"
-        output "in AutoBuild to install them with winget. Then run AutoBuild again."
+        output "(https://visualstudio.microsoft.com/downloads), or check Install Visual Studio's C++ Build Tools"
+        output "in AutoBuild's window to install them with winget. Then run AutoBuild again."
         return ""
     end
 

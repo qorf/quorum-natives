@@ -109,7 +109,9 @@ if (QUORUM_WEB)
         "SHELL:-s SAFE_HEAP=1"
         "SHELL:-s ALLOW_MEMORY_GROWTH=1"
         "SHELL:-s EXPORTED_FUNCTIONS=${WEB_EXPORTS}"
-        "SHELL:-s EXPORTED_RUNTIME_METHODS=cwrap,getValue"
+        # FreeTypeStrategy.js also reads each glyph's image from HEAPU8,
+        # which newer Emscripten no longer exports unless asked.
+        "SHELL:-s EXPORTED_RUNTIME_METHODS=cwrap,getValue,HEAPU8"
         "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/src/web/fonts@fonts")
     # Nothing else is built for the web.
     return()
