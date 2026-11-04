@@ -119,7 +119,7 @@ use Libraries.System.Properties
 
     Running from Gradle on a physical device:
 
-    ./gradlew -Dorg.gradle.java.home="/Applications/QuorumStudio.app/Contents/MacOS/Java/jdk/Contents/Home" ios:launchIOSDevice -Probovm.device.name="Andy’s iPhone" --stacktrace
+    ./gradlew -Dorg.gradle.java.home="/Applications/QuorumStudio.app/Contents/app/Java/jdk/Contents/Home" ios:launchIOSDevice -Probovm.device.name="Andy’s iPhone" --stacktrace
 */
 class Main is NetworkRequestListener, ProcessListener
     constant text DOWNLOADS = "../download"
@@ -163,6 +163,17 @@ class Main is NetworkRequestListener, ProcessListener
     constant text GLSLANG_FOLDER = "glslang-16.6.0"
     constant text MOLTENVK_TAR = "https://github.com/KhronosGroup/MoltenVK/releases/download/v1.4.2/MoltenVK-all.tar"
     constant text MOLTENVK_TAR_NAME = "MoltenVK-1.4.2-all.tar"
+
+    // AccessKit's C bindings (accesskit-c), linked into Mac.so for
+    // VoiceOver. Pinned to the 0.23.2 release's prebuilt libraries; MIT or
+    // Apache 2.0 licensed. The zip has every platform's libraries, and only
+    // the Mac's two are used. ACCESSKIT_VERSION is written into
+    // download/accesskit, so a new pin unpacks the new zip.
+    constant text ACCESSKIT_VERSION = "0.23.2"
+    constant text ACCESSKIT_ZIP = "https://github.com/AccessKit/accesskit-c/releases/download/0.23.2/accesskit-c-0.23.2.zip"
+    constant text ACCESSKIT_ZIP_NAME = "accesskit-c-0.23.2.zip"
+    constant text ACCESSKIT_FOLDER = "accesskit-c-0.23.2"
+    constant text ACCESSKIT_VERSION_FILE = "quorum-accesskit-version.txt"
 
     // Android: Google's NDK, pinned (r30, a long-term support release). It's
     // used from the Android SDK if Android Studio installed it there, and
@@ -328,6 +339,15 @@ class Main is NetworkRequestListener, ProcessListener
             Deflate(MOLTENVK_TAR_NAME, DOWNLOADS + "/MoltenVK", DOWNLOADS + "/moltenvk-package")
         end
 
+        // AccessKit, for VoiceOver, linked into Mac.so.
+        if prop:IsMac() and buildMac
+            output "Downloading AccessKit " + ACCESSKIT_VERSION + " (about 68 MB)"
+            Download(ACCESSKIT_ZIP, ACCESSKIT_ZIP_NAME)
+            RemoveOldAccessKit()
+            Deflate(ACCESSKIT_ZIP_NAME, DOWNLOADS + "/" + ACCESSKIT_FOLDER, DOWNLOADS + "/accesskit")
+            MarkAccessKitVersion()
+        end
+
         DoPlatformBuild()
 
         output ""
@@ -420,6 +440,40 @@ class Main is NetworkRequestListener, ProcessListener
                 oldFreeType:SetPath(DOWNLOADS + "/freetype")
                 oldFreeType:Delete(true)
             end
+        end
+    end
+
+    /*
+        Deletes download/accesskit if it was unpacked from a different
+        AccessKit release than ACCESSKIT_VERSION, so the pinned one is
+        unpacked in its place. (Deflate skips a folder that's already there.)
+    */
+    action RemoveOldAccessKit
+        File folder
+        folder:SetPath(DOWNLOADS + "/accesskit")
+        if not folder:Exists()
+            return now
+        end
+
+        File versionFile
+        versionFile:SetPath(DOWNLOADS + "/accesskit/" + ACCESSKIT_VERSION_FILE)
+        if versionFile:Exists() and versionFile:Read():Trim() = ACCESSKIT_VERSION
+            return now
+        end
+
+        output "download/accesskit isn't AccessKit " + ACCESSKIT_VERSION + ", so it will be extracted again."
+        folder:Delete(true)
+    end
+
+    /*
+        Records which AccessKit release download/accesskit holds (see
+        RemoveOldAccessKit).
+    */
+    action MarkAccessKitVersion
+        File versionFile
+        versionFile:SetPath(DOWNLOADS + "/accesskit/" + ACCESSKIT_VERSION_FILE)
+        if not versionFile:Exists()
+            versionFile:Write(ACCESSKIT_VERSION)
         end
     end
 
@@ -862,6 +916,9 @@ class Main is NetworkRequestListener, ProcessListener
     */
     action DoMac returns boolean
         output "=== Mac ==="
+        if not MakeUniversalAccessKit()
+            return false
+        end
         Array<text> options
         options:Add("-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64")
         options:Add("-DCMAKE_OSX_DEPLOYMENT_TARGET=" + macVersion)
@@ -894,6 +951,33 @@ class Main is NetworkRequestListener, ProcessListener
         parameters:Add("-verify_arch")
         parameters:Add(architecture)
         return RunStep("Checking that " + MAC_NAME + " has " + architecture, "lipo", parameters, root)
+    end
+
+    /*
+        Joins AccessKit's arm64 and x86_64 static libraries into one, in
+        download/accesskit/universal, so the universal Mac.so can link it.
+        It's done once per download.
+    */
+    action MakeUniversalAccessKit returns boolean
+        File universal
+        universal:SetPath(DOWNLOADS + "/accesskit/universal/libaccesskit.a")
+        if universal:Exists()
+            return true
+        end
+
+        File folder
+        folder:SetPath(DOWNLOADS + "/accesskit/universal")
+        folder:CreateDirectories()
+
+        File root
+        root:SetPath("..")
+        Array<text> parameters
+        parameters:Add("-create")
+        parameters:Add("download/accesskit/lib/macos/arm64/static/libaccesskit.a")
+        parameters:Add("download/accesskit/lib/macos/x86_64/static/libaccesskit.a")
+        parameters:Add("-output")
+        parameters:Add("download/accesskit/universal/libaccesskit.a")
+        return RunStep("Joining AccessKit's arm64 and x86_64 libraries", "lipo", parameters, root)
     end
 
     /*

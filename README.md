@@ -68,7 +68,7 @@ Everything is built from the `CMakeLists.txt` in the root folder, one build fold
 
 | Platform | Folder | How |
 |---|---|---|
-| Mac | `build/mac` | One build for both `arm64` and `x86_64`, with FreeType built in, giving one universal file, `Mac.so`. `lipo -verify_arch` checks it has both. macOS loads the half that matches the running Java. |
+| Mac | `build/mac` | One build for both `arm64` and `x86_64`, with FreeType and AccessKit built in, giving one universal file, `Mac.so`. `lipo -verify_arch` checks it has both. macOS loads the half that matches the running Java. |
 | Windows | `build/windows-clang` | Cross-compiled with `clang-cl` and `lld-link` (`toolchains/clang-cl-xwin.cmake`), using Microsoft's Windows SDK and C runtime from `xwin`, with the C runtime linked in (`/MT`). xwin has no ATL, so the speech code uses the stand-ins in `src/windows/speech/atl` (`QUORUM_ATL_STANDIN`). |
 | iOS | `build/ios-device`, `build/ios-simulator` | `CMAKE_SYSTEM_NAME=iOS`. Static libraries with the natives, `src/ios`, `src/vulkan`, and FreeType, glslang and MoltenVK (the slice for phones or the simulator) merged in (`liballnatives.a`). The app links Metal and IOSurface for MoltenVK (Quorum Studio's `robovm.xml`). |
 | Android | `build/android-arm64-v8a`, `build/android-x86_64` | The NDK's CMake toolchain, with Ninja. One shared library per ABI with the natives, `src/vulkan`, FreeType and glslang, and the C++ library linked in (`c++_static`), linked to the phone's own `libvulkan.so`. `llvm-objdump` checks the processor, and that the library's memory segments are aligned to 16 KB, which Google Play requires. |
@@ -78,6 +78,8 @@ The same builds from Terminal, from the root of `quorum-natives`:
 ```bash
 cmake -S . -B build/mac -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 && cmake --build build/mac --parallel
 ```
+
+(The Mac needs `download/accesskit`, AccessKit's prebuilt C library, version 0.23.2, which AutoBuild downloads and joins into `download/accesskit/universal/libaccesskit.a`. By hand: `lipo -create download/accesskit/lib/macos/arm64/static/libaccesskit.a download/accesskit/lib/macos/x86_64/static/libaccesskit.a -output download/accesskit/universal/libaccesskit.a`.)
 
 ```bash
 cmake -S . -B build/windows-clang -G Ninja -DCMAKE_TOOLCHAIN_FILE=$PWD/toolchains/clang-cl-xwin.cmake && cmake --build build/windows-clang

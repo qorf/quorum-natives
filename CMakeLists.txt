@@ -60,7 +60,20 @@ endif()
 # default. Windows needs a Windows JDK's headers, which AutoBuild downloads.
 # Android's NDK has its own jni.h.
 if (APPLE)
-    set(QUORUM_JDK "/Applications/QuorumStudio.app/Contents/MacOS/Java/jdk/Contents/Home" CACHE PATH "JDK whose headers are used")
+    # Studio's native launcher moved the app's JDK to Contents/app (2026-10-28);
+    # older installs have it in Contents/MacOS. A cached path without jni.h,
+    # such as the old place, is replaced.
+    set(QUORUM_JDK "/Applications/QuorumStudio.app/Contents/app/Java/jdk/Contents/Home" CACHE PATH "JDK whose headers are used")
+    if (NOT EXISTS "${QUORUM_JDK}/include/jni.h")
+        foreach(QUORUM_JDK_CANDIDATE
+                "/Applications/QuorumStudio.app/Contents/app/Java/jdk/Contents/Home"
+                "/Applications/QuorumStudio.app/Contents/MacOS/Java/jdk/Contents/Home")
+            if (EXISTS "${QUORUM_JDK_CANDIDATE}/include/jni.h")
+                set(QUORUM_JDK "${QUORUM_JDK_CANDIDATE}" CACHE PATH "JDK whose headers are used" FORCE)
+                break()
+            endif()
+        endforeach()
+    endif()
     set(JNI_PLATFORM darwin)
 elseif (WIN32)
     set(QUORUM_JDK "${CMAKE_SOURCE_DIR}/download/jdk/windows/x64/jdk-11.0.15+10" CACHE PATH "JDK whose headers are used")
@@ -198,10 +211,37 @@ elseif (QUORUM_ANDROID)
     # One shared library per ABI, loaded by System.loadLibrary("GameEngineCPlugins").
     add_library(GameEngineCPlugins SHARED ${NATIVE_SOURCES} ${VULKAN_SOURCES})
 else()
-    add_library(GameEngineCPlugins MODULE ${NATIVE_SOURCES} ${APPLE_SOURCES} ${WINDOWS_SOURCES})
+    # Mac only: VoiceOver through AccessKit (src/mac), with AccessKit's C
+    # library from download/accesskit (AutoBuild downloads it and joins its
+    # two architectures into one file).
     if (APPLE)
+        set(QUORUM_ACCESSKIT "${CMAKE_SOURCE_DIR}/download/accesskit")
+        if (NOT EXISTS "${QUORUM_ACCESSKIT}/universal/libaccesskit.a")
+            message(FATAL_ERROR "AccessKit is missing from download/accesskit. Run AutoBuild once to download it.")
+        endif()
+        set(MAC_SOURCES src/mac/AccessKitJNI.m src/mac/AccessKitRuntime.m)
+        set_source_files_properties(${MAC_SOURCES} PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+        # AccessKitRuntime.m patches AccessKit's elements at run time and only
+        # trusts the accesskit-c release it was tested with, so it is told
+        # which one this is (AutoBuild writes the version file).
+        set(QUORUM_ACCESSKIT_VERSION "unknown")
+        if (EXISTS "${QUORUM_ACCESSKIT}/quorum-accesskit-version.txt")
+            file(STRINGS "${QUORUM_ACCESSKIT}/quorum-accesskit-version.txt" QUORUM_ACCESSKIT_VERSION LIMIT_COUNT 1)
+            string(STRIP "${QUORUM_ACCESSKIT_VERSION}" QUORUM_ACCESSKIT_VERSION)
+        endif()
+        set_source_files_properties(src/mac/AccessKitRuntime.m PROPERTIES
+            COMPILE_DEFINITIONS "QUORUM_ACCESSKIT_VERSION=\"${QUORUM_ACCESSKIT_VERSION}\"")
+    endif()
+    add_library(GameEngineCPlugins MODULE ${NATIVE_SOURCES} ${APPLE_SOURCES} ${MAC_SOURCES} ${WINDOWS_SOURCES})
+    if (APPLE)
+        target_include_directories(GameEngineCPlugins PRIVATE "${QUORUM_ACCESSKIT}/include")
         target_link_libraries(GameEngineCPlugins PRIVATE
-            "-framework Foundation" "-framework AVFoundation")
+            "-framework Foundation" "-framework AVFoundation"
+            "${QUORUM_ACCESSKIT}/universal/libaccesskit.a"
+            "-framework AppKit" "-framework CoreFoundation" objc c++)
+        # Keep only the parts of AccessKit that Mac.so uses, and leave out its
+        # debug information (the release libraries are built with it).
+        target_link_options(GameEngineCPlugins PRIVATE "-Wl,-dead_strip" "-Wl,-S")
     endif()
 endif()
 
