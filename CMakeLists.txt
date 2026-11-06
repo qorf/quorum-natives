@@ -231,14 +231,18 @@ else()
         endif()
         set_source_files_properties(src/mac/AccessKitRuntime.m PROPERTIES
             COMPILE_DEFINITIONS "QUORUM_ACCESSKIT_VERSION=\"${QUORUM_ACCESSKIT_VERSION}\"")
+        # The file watcher, through FSEvents (Studio plan FileWatching.md,
+        # 2026-11-06). Plain C, so it is kept out of MAC_SOURCES and their
+        # -fobjc-arc.
+        set(MAC_C_SOURCES src/mac/FileWatcherMac.c)
     endif()
-    add_library(GameEngineCPlugins MODULE ${NATIVE_SOURCES} ${APPLE_SOURCES} ${MAC_SOURCES} ${WINDOWS_SOURCES})
+    add_library(GameEngineCPlugins MODULE ${NATIVE_SOURCES} ${APPLE_SOURCES} ${MAC_SOURCES} ${MAC_C_SOURCES} ${WINDOWS_SOURCES})
     if (APPLE)
         target_include_directories(GameEngineCPlugins PRIVATE "${QUORUM_ACCESSKIT}/include")
         target_link_libraries(GameEngineCPlugins PRIVATE
             "-framework Foundation" "-framework AVFoundation"
             "${QUORUM_ACCESSKIT}/universal/libaccesskit.a"
-            "-framework AppKit" "-framework CoreFoundation" objc c++)
+            "-framework AppKit" "-framework CoreFoundation" "-framework CoreServices" objc c++)
         # Keep only the parts of AccessKit that Mac.so uses, and leave out its
         # debug information (the release libraries are built with it).
         target_link_options(GameEngineCPlugins PRIVATE "-Wl,-dead_strip" "-Wl,-S")
