@@ -1058,9 +1058,11 @@ class Main is NetworkRequestListener, ProcessListener
         if candidate:Exists()
             return LLVM_FOLDER_ARM + "clang-cl"
         end
-        candidate:SetAbsolutePath(LLVM_FOLDER_INTEL + "clang-cl")
-        if candidate:Exists()
-            return LLVM_FOLDER_INTEL + "clang-cl"
+        if CanUseIntelHomebrew()
+            candidate:SetAbsolutePath(LLVM_FOLDER_INTEL + "clang-cl")
+            if candidate:Exists()
+                return LLVM_FOLDER_INTEL + "clang-cl"
+            end
         end
         return ""
     end
@@ -1119,7 +1121,7 @@ class Main is NetworkRequestListener, ProcessListener
         candidate:SetAbsolutePath(LLVM_FOLDER_ARM + "llvm-objdump")
         if candidate:Exists()
             objdump = LLVM_FOLDER_ARM + "llvm-objdump"
-        else
+        elseif CanUseIntelHomebrew()
             candidate:SetAbsolutePath(LLVM_FOLDER_INTEL + "llvm-objdump")
             if candidate:Exists()
                 objdump = LLVM_FOLDER_INTEL + "llvm-objdump"
@@ -1314,13 +1316,35 @@ class Main is NetworkRequestListener, ProcessListener
     end
 
     /*
+        Whether tools from the Intel Homebrew (/usr/local) may be used. On an
+        Apple-silicon Mac they're Intel programs that only run through
+        Rosetta, which Apple is removing, so they're skipped there, and a tool
+        missing from the Apple-silicon Homebrew (/opt/homebrew) is installed
+        there instead. Java reports aarch64 when Quorum runs natively on
+        Apple silicon.
+    */
+    action CanUseIntelHomebrew returns boolean
+        Properties prop
+        if not prop:IsMac()
+            return true
+        end
+        text cpu = prop:GetArchitecture()
+        if cpu = undefined
+            return true
+        end
+        return not cpu:Contains("aarch64")
+    end
+
+    /*
         Quorum Studio started from the Finder has a short PATH, so tools are
         looked for where Homebrew and CMake.app put them instead of by name.
     */
     action FindInUsualPlaces(text name) returns text
         Array<text> folders
         folders:Add("/opt/homebrew/bin/")
-        folders:Add("/usr/local/bin/")
+        if CanUseIntelHomebrew()
+            folders:Add("/usr/local/bin/")
+        end
         folders:Add("/Applications/CMake.app/Contents/bin/")
         i = 0
         repeat while i < folders:GetSize()
