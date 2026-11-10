@@ -26,6 +26,11 @@
     on) is added to its elements at run time by AccessKitRuntime.m, which
     the adapter natives here call (AccessKitRuntime.h).
 
+    VoiceOver's action requests reach Java through NativeActionReceiver:
+    AccessKit's (Act) and the ones AccessKitRuntime.m adds (RuntimeAct).
+    Java only queues them; MacAccessibility carries them out in its next
+    update, because AccessKit may have its tree borrowed while they come.
+
     Compiled with ARC (see CMakeLists.txt). No Objective-C objects are kept
     here; the autorelease pools catch what AccessKit's AppKit calls leave.
 */
@@ -34,6 +39,7 @@
 #include <jni.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include "accesskit.h"
 #include "AccessKitRuntime.h"
 
@@ -44,17 +50,22 @@ static JavaVM* quorumVM = NULL;
 // NativePointerSupplier.get()J, through which Java hands over a TreeUpdate.
 static jmethodID supplierGet = NULL;
 
+// NativeActionReceiver.receive, through which VoiceOver's requests reach Java.
+static jmethodID receiverReceive = NULL;
+
 /*
     One adapter as Java sees it: AccessKit's adapter, plus the global
-    reference to the activation handler's supplier that AccessKit holds
-    as userdata. nativeDrop frees both. view is the NSView the adapter took
-    over, where AccessKitRuntime.m starts looking for elements; AccessKit
-    keeps it alive while the adapter lives (subclass.rs, SubclassingAdapter).
+    references AccessKit holds as userdata: the activation handler's
+    supplier, and the action receiver (NULL if Java gave none). nativeDrop
+    frees them all. view is the NSView the adapter took over, where
+    AccessKitRuntime.m starts looking for elements; AccessKit keeps it
+    alive while the adapter lives (subclass.rs, SubclassingAdapter).
 */
 typedef struct QuorumAdapter
 {
     struct accesskit_macos_subclassing_adapter* adapter;
     jobject activation;
+    jobject actions;
     void* view;
 } QuorumAdapter;
 
@@ -130,6 +141,20 @@ static jboolean Prepare(JNIEnv* env)
         if (supplierGet == NULL)
             return JNI_FALSE;
     }
+
+    if (receiverReceive == NULL)
+    {
+        jclass receiverClass = (*env)->FindClass(env,
+            "plugins/quorum/Libraries/Interface/Accessibility/AccessKitBinding/NativeActionReceiver");
+        if (receiverClass == NULL)
+            return JNI_FALSE;
+        // receive(int action, long target, int dataKind, byte[] value, double number,
+        //         long anchorNode, int anchorIndex, long focusNode, int focusIndex)
+        receiverReceive = (*env)->GetMethodID(env, receiverClass, "receive", "(IJI[BDJIJI)V");
+        (*env)->DeleteLocalRef(env, receiverClass);
+        if (receiverReceive == NULL)
+            return JNI_FALSE;
+    }
     return JNI_TRUE;
 }
 
@@ -203,14 +228,97 @@ static struct accesskit_tree_update* Supply(void* userdata)
     return update;
 }
 
+// A character index for Java; AccessKit's are size_t.
+static jint ToJavaIndex(size_t value)
+{
+    return value > INT32_MAX ? INT32_MAX : (jint)value;
+}
+
 /*
-    AccessKit's action handler (VoiceOver pressing a button, and so on).
-    AccessKit requires one. Actions aren't handled yet (the overview's step
-    6), so the request, which this callback owns, is just freed.
+    Gives one request to Java's NativeActionReceiver as plain values, and
+    clears any Java exception (receive catches everything; this is only for
+    something like an OutOfMemoryError, which AppKit and AccessKit can't
+    take). value may be NULL.
+*/
+static void Deliver(JNIEnv* env, jobject receiver, jint action, jlong target, jint dataKind,
+    jbyteArray value, jdouble number, jlong anchorNode, jint anchorIndex, jlong focusNode, jint focusIndex)
+{
+    if (!(*env)->ExceptionCheck(env))
+    {
+        (*env)->CallVoidMethod(env, receiver, receiverReceive, action, target, dataKind, value, number,
+            anchorNode, anchorIndex, focusNode, focusIndex);
+    }
+    if ((*env)->ExceptionCheck(env))
+        (*env)->ExceptionClear(env);
+}
+
+/*
+    AccessKit's action handler: VoiceOver pressing a button, focusing an
+    item, setting a value, moving a caret. userdata is the global reference
+    to Java's NativeActionReceiver, or NULL. The request is taken apart into
+    plain values (the text as UTF-8 bytes) and given to Java, which only
+    queues it: AccessKit has its tree borrowed while this runs, so updating
+    it from here would panic. This callback owns the request and frees it.
 */
 static void Act(struct accesskit_action_request* request, void* userdata)
 {
+    jobject receiver = (jobject)userdata;
+    JNIEnv* env = receiver == NULL || receiverReceive == NULL ? NULL : CurrentEnv();
+    if (env != NULL)
+    {
+        jint dataKind = -1;     // NativeActionReceiver.NO_DATA
+        jbyteArray value = NULL;
+        jdouble number = 0;
+        jlong anchorNode = 0, focusNode = 0;
+        jint anchorIndex = 0, focusIndex = 0;
+        if (request->data.has_value)
+        {
+            const struct accesskit_action_data* data = &request->data.value;
+            dataKind = (jint)data->tag;
+            switch (data->tag)
+            {
+                case ACCESSKIT_ACTION_DATA_VALUE:
+                    if (data->value != NULL)
+                    {
+                        jsize length = (jsize)strlen(data->value);
+                        value = (*env)->NewByteArray(env, length);
+                        if (value != NULL)
+                            (*env)->SetByteArrayRegion(env, value, 0, length, (const jbyte*)data->value);
+                    }
+                    break;
+                case ACCESSKIT_ACTION_DATA_NUMERIC_VALUE:
+                    number = data->numeric_value;
+                    break;
+                case ACCESSKIT_ACTION_DATA_SET_TEXT_SELECTION:
+                    anchorNode = (jlong)data->set_text_selection.anchor.node;
+                    anchorIndex = ToJavaIndex(data->set_text_selection.anchor.character_index);
+                    focusNode = (jlong)data->set_text_selection.focus.node;
+                    focusIndex = ToJavaIndex(data->set_text_selection.focus.character_index);
+                    break;
+                default:
+                    break;
+            }
+        }
+        Deliver(env, receiver, (jint)request->action, (jlong)request->target_node, dataKind, value, number,
+            anchorNode, anchorIndex, focusNode, focusIndex);
+        if (value != NULL)
+            (*env)->DeleteLocalRef(env, value);
+    }
     accesskit_action_request_free(request);
+}
+
+/*
+    The requests AccessKitRuntime.m adds (show a context menu, open or
+    close a row), with no data. userdata is the same receiver as Act's.
+    Called from inside AppKit's call on an element; Java only queues.
+*/
+static void RuntimeAct(int action, uint64_t node, void* userdata)
+{
+    jobject receiver = (jobject)userdata;
+    JNIEnv* env = receiver == NULL || receiverReceive == NULL ? NULL : CurrentEnv();
+    if (env == NULL)
+        return;
+    Deliver(env, receiver, (jint)action, (jlong)node, -1, NULL, 0, 0, 0, 0, 0);
 }
 
 /* Raises the events an update queued, if there are any. */
@@ -222,10 +330,11 @@ static void Raise(struct accesskit_macos_queued_events* events)
 
 /*
     Makes the QuorumAdapter for a view or a window. The supplier is the
-    activation handler's, wrapped by TreeUpdate.makeNativeSupplier; AccessKit
-    keeps it as userdata, so it gets a global reference.
+    activation handler's, wrapped by TreeUpdate.makeNativeSupplier, and the
+    receiver wraps the ActionHandler (or is NULL); AccessKit keeps both as
+    userdata, so they get global references.
 */
-static QuorumAdapter* NewAdapter(JNIEnv* env, jobject supplier)
+static QuorumAdapter* NewAdapter(JNIEnv* env, jobject supplier, jobject receiver)
 {
     if (!Prepare(env))
         return NULL;
@@ -243,41 +352,54 @@ static QuorumAdapter* NewAdapter(JNIEnv* env, jobject supplier)
         ThrowIllegalState(env, "AccessKit: no global reference for the activation handler");
         return NULL;
     }
+    if (receiver != NULL)
+    {
+        result->actions = (*env)->NewGlobalRef(env, receiver);
+        if (result->actions == NULL)
+        {
+            (*env)->DeleteGlobalRef(env, result->activation);
+            free(result);
+            ThrowIllegalState(env, "AccessKit: no global reference for the action handler");
+            return NULL;
+        }
+    }
     return result;
 }
 
 JNIEXPORT jlong JNICALL Java_plugins_quorum_Libraries_Interface_Accessibility_AccessKitBinding_MacosSubclassingAdapter_nativeNew
-    (JNIEnv* env, jclass type, jlong view, jobject supplier)
+    (JNIEnv* env, jclass type, jlong view, jobject supplier, jobject receiver)
 {
     @autoreleasepool
     {
-        QuorumAdapter* result = NewAdapter(env, supplier);
+        QuorumAdapter* result = NewAdapter(env, supplier, receiver);
         if (result == NULL)
             return 0;
         // view is an NSView*.
         result->view = (void*)(intptr_t)view;
         result->adapter = accesskit_macos_subclassing_adapter_new(result->view,
-            Activate, result->activation, Act, NULL);
+            Activate, result->activation, Act, result->actions);
         QuorumRuntimeWatchView(result->view);
+        QuorumRuntimeSetActionSink(result->actions == NULL ? NULL : RuntimeAct, result->actions);
         return ToJava(result);
     }
 }
 
 JNIEXPORT jlong JNICALL Java_plugins_quorum_Libraries_Interface_Accessibility_AccessKitBinding_MacosSubclassingAdapter_nativeForWindow
-    (JNIEnv* env, jclass type, jlong window, jobject supplier)
+    (JNIEnv* env, jclass type, jlong window, jobject supplier, jobject receiver)
 {
     @autoreleasepool
     {
-        QuorumAdapter* result = NewAdapter(env, supplier);
+        QuorumAdapter* result = NewAdapter(env, supplier, receiver);
         if (result == NULL)
             return 0;
         // window is an NSWindow* (glfwGetCocoaWindow). AccessKit panics, and
         // so ends the program, if it has no content view; GLFW's always do.
         result->adapter = accesskit_macos_subclassing_adapter_for_window((void*)(intptr_t)window,
-            Activate, result->activation, Act, NULL);
+            Activate, result->activation, Act, result->actions);
         // The view AccessKit took over (subclass.rs, for_window).
         result->view = QuorumRuntimeContentView((void*)(intptr_t)window);
         QuorumRuntimeWatchView(result->view);
+        QuorumRuntimeSetActionSink(result->actions == NULL ? NULL : RuntimeAct, result->actions);
         return ToJava(result);
     }
 }
@@ -290,11 +412,14 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Interface_Accessibility_Acc
         QuorumAdapter* adapter = AdapterFrom(pointer);
         if (adapter == NULL)
             return;
-        // The adapter first, so AccessKit can't call Activate with a
-        // reference that is already gone.
+        // The adapter and the runtime's sink first, so neither AccessKit
+        // nor the additions can use a reference that is already gone.
+        QuorumRuntimeSetActionSink(NULL, NULL);
         if (adapter->adapter != NULL)
             accesskit_macos_subclassing_adapter_free(adapter->adapter);
         (*env)->DeleteGlobalRef(env, adapter->activation);
+        if (adapter->actions != NULL)
+            (*env)->DeleteGlobalRef(env, adapter->actions);
         free(adapter);
         QuorumRuntimeReset();
     }
@@ -420,6 +545,13 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Interface_Accessibility_Acc
     (JNIEnv* env, jclass type, jlong node, jbyteArray text)
 {
     SetString(env, node, text, accesskit_node_set_value_with_length, accesskit_node_clear_value);
+}
+
+// What VoiceOver says instead of the role's name, such as "terrain".
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Interface_Accessibility_AccessKitBinding_Node_nativeSetRoleDescription
+    (JNIEnv* env, jclass type, jlong node, jbyteArray text)
+{
+    SetString(env, node, text, accesskit_node_set_role_description_with_length, accesskit_node_clear_role_description);
 }
 
 JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Interface_Accessibility_AccessKitBinding_Node_nativeSetAccessKey

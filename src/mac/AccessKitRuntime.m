@@ -14,8 +14,13 @@
     - a row's place among the rows at its depth (AXARIAPosInSet,
       AXARIASetSize), and a level for list rows drawn as a tree;
     - headings (AXHeading) and a Headings rotor on every element and the view;
-    - expanded on any node that opens and closes.
-    The plan is plans/Natives/AccessKitMacSteps/10-Runtime-Patch.md.
+    - expanded on any node that opens and closes;
+    - two requests AccessKit's adapter has no way to send: showing a
+      node's context menu (AXShowMenu, VO-Shift-M) and opening or closing a
+      row (AXDisclosing set, VO-\), passed to Java's action queue through
+      the sink AccessKitJNI.m sets (QuorumRuntimeSetActionSink).
+    The plan is plans/Natives/AccessKitMacSteps/10-Runtime-Patch.md, with
+    the requests and the extra install points in 14-Actions-Focus-Terrain.md.
 
     How it works:
     - Every element AccessKit gives macOS is an instance of a class it
@@ -46,7 +51,13 @@
     only fills the table, and notices are posted after
     accesskit_macos_subclassing_adapter_update_if_active has returned, as
     AccessKit itself raises its events (event.rs, QueuedEvents::raise).
-    Nothing here calls Java.
+    Nothing here calls Java, except the action sink, which only queues the
+    request (MacAccessibility carries it out in its next update, outside
+    AccessKit). The view's own methods (accessibilityChildren,
+    accessibilityFocusedUIElement, accessibilityHitTest:) hold a write
+    borrow of the view's AccessKit state while AccessKit's original runs,
+    so the wrappers below install only before and after the original,
+    never inside it.
 
     Everything runs on the main thread: Java's updates, and VoiceOver's
     questions, which AppKit answers inside the run loop. ARC (-fobjc-arc).
@@ -84,7 +95,12 @@ enum
     QKExpanded = 32,
     QKMarked = 64,
     QKList = 128,
-    QKHeading = 256
+    QKHeading = 256,
+    QKHasMenu = 512,
+    QKCanDisclose = 1024,
+    // An outline whose rows VoiceOver must not count ("1 of 2"): a 3D
+    // item's cursor (Item3DKit). Its AXRows is empty.
+    QKUncounted = 2048
 };
 
 // Notices; the same numbers as MacAccessibilityExtras.java.
@@ -94,7 +110,8 @@ enum
     QKMenuClosed = 2,
     QKRowExpanded = 3,
     QKRowCollapsed = 4,
-    QKRowCountChanged = 5
+    QKRowCountChanged = 5,
+    QKMoved = 6
 };
 
 // How far QKFind looks from the view before giving up, and how deep the
@@ -132,6 +149,7 @@ typedef struct QKNotice
 typedef id (*QKObjectGetter)(id self, SEL _cmd);
 typedef BOOL (*QKSelectorTest)(id self, SEL _cmd, SEL selector);
 typedef id (*QKAttributeGetter)(id self, SEL _cmd, NSString* attribute);
+typedef id (*QKHitTest)(id self, SEL _cmd, NSPoint point);
 
 // The facts, by node id.
 static NSMutableDictionary<NSNumber*, QuorumAccessKitExtra*>* extras = nil;
@@ -170,6 +188,12 @@ static BOOL hasDisclosedRows = NO;
 static BOOL hasExpanded = NO;
 static BOOL hasRowCount = NO;
 static BOOL hasCustomRotors = NO;
+static BOOL hasShowMenu = NO;
+static BOOL hasSetDisclosed = NO;
+
+// Where VoiceOver's show-menu and open/close requests go (QuorumRuntimeSetActionSink).
+static QuorumActionSink actionSink = NULL;
+static void* actionSinkData = NULL;
 
 // The window's headings, in order, worked out once between updates, and
 // the rotor that lists them (VoiceOver's rotor, "Headings").
@@ -177,13 +201,29 @@ static NSArray* headings = nil;
 static NSAccessibilityCustomRotor* headingRotor = nil;
 
 /*
-    A test switch, read once from the environment, to find out which data
-    VoiceOver uses for an outline row's "2 of 5" (plan 12, "The test"):
-    QUORUM_VOICEOVER_EXPERIMENT=aria adds 100 to AXARIAPosInSet and
-    AXARIASetSize; =disclosed reverses AXDisclosedRows. Unset: no change.
+    A test switch, read once from the environment, as comma-separated flags
+    (QUORUM_VOICEOVER_EXPERIMENT=aria): aria adds 100 to AXARIAPosInSet and
+    AXARIASetSize, and disclosed reverses AXDisclosedRows (plan 12). Unset:
+    no change.
 */
 static int experiment = -1;
 enum { QKExperimentNone = 0, QKExperimentAria = 1, QKExperimentDisclosed = 2 };
+
+// True if the flag's name is one of the switch's comma-separated words.
+static BOOL HasWord(const char* value, const char* word)
+{
+    size_t length = strlen(word);
+    const char* found = value;
+    while ((found = strstr(found, word)) != NULL)
+    {
+        BOOL starts = found == value || found[-1] == ',';
+        BOOL ends = found[length] == '\0' || found[length] == ',';
+        if (starts && ends)
+            return YES;
+        found += length;
+    }
+    return NO;
+}
 
 static int Experiment(void)
 {
@@ -191,19 +231,30 @@ static int Experiment(void)
     {
         const char* value = getenv("QUORUM_VOICEOVER_EXPERIMENT");
         experiment = QKExperimentNone;
-        if (value != NULL && strcmp(value, "aria") == 0)
-            experiment = QKExperimentAria;
-        else if (value != NULL && strcmp(value, "disclosed") == 0)
-            experiment = QKExperimentDisclosed;
-        if (experiment != QKExperimentNone)
+        if (value != NULL)
+        {
+            if (HasWord(value, "aria"))
+                experiment |= QKExperimentAria;
+            if (HasWord(value, "disclosed"))
+                experiment |= QKExperimentDisclosed;
             NSLog(@"Quorum VoiceOver additions: test switch %s is on.", value);
+        }
     }
     return experiment;
 }
 
-// The view's class and its accessibilityChildren (QuorumRuntimeWatchView).
+// True if the test switch has this flag.
+static BOOL HasExperiment(int flag)
+{
+    return (Experiment() & flag) != 0;
+}
+
+// The view's class and its three methods that make AccessKit's elements
+// (QuorumRuntimeWatchView; subclass.rs, subclass_of).
 static Class watchedViewClass = Nil;
 static IMP originalViewChildren = NULL;
+static IMP originalViewFocus = NULL;
+static IMP originalViewHitTest = NULL;
 
 static void PrepareTables(void)
 {
@@ -430,7 +481,7 @@ static id DisclosedRows(id self, SEL _cmd)
         if (extra != nil && (extra.flags & QKOutlineRow) != 0)
             [rows addObject:child];
     }
-    if (Experiment() == QKExperimentDisclosed)
+    if (HasExperiment(QKExperimentDisclosed))
         return [[rows reverseObjectEnumerator] allObjects];
     return rows;
 }
@@ -459,6 +510,45 @@ static NSInteger RowCount(id self, SEL _cmd)
     return 0;
 }
 
+/*
+    VoiceOver's show menu (VO-Shift-M, AXShowMenu). Allowed only on a node
+    with a context menu (QKHasMenu). The request goes to Java's queue; the
+    menu opens in Quorum's next update, as Shift+F10 opens it.
+*/
+static BOOL PerformShowMenu(id self, SEL _cmd)
+{
+    uint64_t node = NodeIdOf(self);
+    QuorumAccessKitExtra* extra = ExtraFor(node);
+    if (extra == nil || (extra.flags & QKHasMenu) == 0 || actionSink == NULL)
+        return NO;
+    actionSink((int)ACCESSKIT_ACTION_SHOW_CONTEXT_MENU, node, actionSinkData);
+    return YES;
+}
+
+/*
+    Opening or closing a row (VO-\ sets AXDisclosing). Allowed only on a
+    row Java says can do it (QKCanDisclose). Only a change is sent; the row
+    reports its new state (AXRowExpanded or AXRowCollapsed, and its
+    expanded state) after Quorum's next update.
+*/
+static void SetDisclosed(id self, SEL _cmd, BOOL disclosed)
+{
+    uint64_t node = NodeIdOf(self);
+    QuorumAccessKitExtra* extra = ExtraFor(node);
+    if (extra == nil || (extra.flags & QKCanDisclose) == 0 || actionSink == NULL)
+        return;
+    BOOL open = (extra.flags & QKExpanded) != 0;
+    if (disclosed == open)
+        return;
+    actionSink((int)(disclosed ? ACCESSKIT_ACTION_EXPAND : ACCESSKIT_ACTION_COLLAPSE), node, actionSinkData);
+}
+
+void QuorumRuntimeSetActionSink(QuorumActionSink sink, void* userdata)
+{
+    actionSink = sink;
+    actionSinkData = userdata;
+}
+
 // ---------------------------------------------------------------- Wrapped methods
 
 static id Role(id self, SEL _cmd)
@@ -479,6 +569,16 @@ static id Rows(id self, SEL _cmd)
     QuorumAccessKitExtra* extra = ExtraFor(node);
     if (extra != nil && (extra.flags & QKOutline) != 0)
         return RowsOf(self, node);
+    // VoiceOver follows a selection only to a row the outline lists, so an
+    // "uncounted" outline (the terrain's cursor) lists just its selected
+    // row: VoiceOver reads each new one, with nothing else to count.
+    if (extra != nil && (extra.flags & QKUncounted) != 0)
+    {
+        id selected = originalSelectedRows != NULL
+            ? ((QKObjectGetter)originalSelectedRows)(self, @selector(accessibilitySelectedRows))
+            : nil;
+        return selected != nil ? selected : @[];
+    }
     return ((QKObjectGetter)originalRows)(self, _cmd);
 }
 
@@ -533,7 +633,7 @@ static id AttributeValue(id self, SEL _cmd, NSString* attribute)
     }
     if (HasSetAttributes(extra) && attribute != nil)
     {
-        NSInteger offset = Experiment() == QKExperimentAria ? 100 : 0;
+        NSInteger offset = HasExperiment(QKExperimentAria) ? 100 : 0;
         if ([attribute isEqualToString:@"AXARIAPosInSet"])
             return @(extra.position + offset);
         if ([attribute isEqualToString:@"AXARIASetSize"])
@@ -562,12 +662,18 @@ static BOOL SelectorAllowed(id self, SEL _cmd, SEL selector)
         || (selector == @selector(accessibilityDisclosedByRow) && hasDisclosedByRow)
         || (selector == @selector(accessibilityDisclosedRows) && hasDisclosedRows)
         || (selector == @selector(isAccessibilityExpanded) && hasExpanded)
-        || (selector == @selector(accessibilityRowCount) && hasRowCount);
+        || (selector == @selector(accessibilityRowCount) && hasRowCount)
+        || (selector == @selector(accessibilityPerformShowMenu) && hasShowMenu)
+        || (selector == @selector(setAccessibilityDisclosed:) && hasSetDisclosed);
     if (ours)
     {
         QuorumAccessKitExtra* extra = ExtraOf(self);
         if (extra == nil)
             return NO;
+        if (selector == @selector(accessibilityPerformShowMenu))
+            return (extra.flags & QKHasMenu) != 0 && actionSink != NULL;
+        if (selector == @selector(setAccessibilityDisclosed:))
+            return (extra.flags & QKCanDisclose) != 0 && (extra.flags & QKOutlineRow) != 0 && actionSink != NULL;
         if (selector == @selector(accessibilityIndex))
             return (extra.flags & (QKOutlineRow | QKListRow)) != 0;
         if (selector == @selector(isAccessibilityExpanded))
@@ -834,14 +940,48 @@ void QuorumRuntimeInstall(void)
     hasExpanded = Add(found, @selector(isAccessibilityExpanded), (IMP)IsExpanded, boolGetter);
     hasRowCount = Add(found, @selector(accessibilityRowCount), (IMP)RowCount, integerGetter);
     hasCustomRotors = Add(found, @selector(accessibilityCustomRotors), (IMP)CustomRotors, objectGetter);
+
+    char boolAction[16];
+    char boolSetter[16];
+    snprintf(boolAction, sizeof(boolAction), "%s@:", @encode(BOOL));
+    snprintf(boolSetter, sizeof(boolSetter), "%s@:%s", @encode(void), @encode(BOOL));
+    hasShowMenu = Add(found, @selector(accessibilityPerformShowMenu), (IMP)PerformShowMenu, boolAction);
+    hasSetDisclosed = Add(found, @selector(setAccessibilityDisclosed:), (IMP)SetDisclosed, boolSetter);
 }
 
-/* The view's accessibilityChildren, which is where AccessKit first makes its elements. */
+/*
+    The view's three methods that hand AppKit AccessKit's elements:
+    accessibilityChildren, accessibilityFocusedUIElement (VoiceOver and the
+    system ask it often) and accessibilityHitTest: (Accessibility
+    Inspector's pointer, VoiceOver's mouse tracking). Whichever AppKit asks
+    first, the additions go in before AppKit gets an element: AccessKit
+    registers its element class while the original makes the first
+    element, so it is installed after the original returns and before its
+    element is handed on. The call before the original covers a class that
+    already exists. Neither runs inside AccessKit's borrow.
+*/
 static id ViewChildren(id self, SEL _cmd)
 {
+    QuorumRuntimeInstall();
     id children = ((QKObjectGetter)originalViewChildren)(self, _cmd);
     QuorumRuntimeInstall();
     return children;
+}
+
+static id ViewFocus(id self, SEL _cmd)
+{
+    QuorumRuntimeInstall();
+    id focused = ((QKObjectGetter)originalViewFocus)(self, _cmd);
+    QuorumRuntimeInstall();
+    return focused;
+}
+
+static id ViewHitTest(id self, SEL _cmd, NSPoint point)
+{
+    QuorumRuntimeInstall();
+    id hit = ((QKHitTest)originalViewHitTest)(self, _cmd, point);
+    QuorumRuntimeInstall();
+    return hit;
 }
 
 void QuorumRuntimeWatchView(void* view)
@@ -861,6 +1001,19 @@ void QuorumRuntimeWatchView(void* view)
     }
     watchedViewClass = viewClass;
     originalViewChildren = method_setImplementation(method, (IMP)ViewChildren);
+
+    // The other two ways AccessKit makes elements. If one is missing, the
+    // additions still go in from accessibilityChildren or the first update.
+    Method focusMethod = OwnMethod(viewClass, @selector(accessibilityFocusedUIElement));
+    if (focusMethod != NULL && HasShape(focusMethod, NO, 2))
+        originalViewFocus = method_setImplementation(focusMethod, (IMP)ViewFocus);
+    else
+        NSLog(@"Quorum VoiceOver additions: the view has no accessibilityFocusedUIElement of AccessKit's.");
+    Method hitTestMethod = OwnMethod(viewClass, @selector(accessibilityHitTest:));
+    if (hitTestMethod != NULL && HasShape(hitTestMethod, NO, 3))
+        originalViewHitTest = method_setImplementation(hitTestMethod, (IMP)ViewHitTest);
+    else
+        NSLog(@"Quorum VoiceOver additions: the view has no accessibilityHitTest: of AccessKit's.");
 
     // The Headings rotor on the view too (CustomRotors). NSView answers
     // accessibilityCustomRotors itself; AccessKit's subclass doesn't.
@@ -913,6 +1066,15 @@ static void Post(NSView* view, QKNotice notice)
             break;
         case QKRowCountChanged:
             NSAccessibilityPostNotification(element, NSAccessibilityRowCountChangedNotification);
+            break;
+        case QKMoved:
+            // AccessKit posts nothing when only bounds change, so VoiceOver
+            // would keep drawing its box where the element used to be.
+            NSAccessibilityPostNotification(element, NSAccessibilityMovedNotification);
+            // VoiceOver needs the layout change too, both to redraw its box
+            // and to read a terrain cursor's move (plan 20's tests).
+            NSAccessibilityPostNotificationWithUserInfo(element, NSAccessibilityLayoutChangedNotification,
+                @{ NSAccessibilityUIElementsKey: @[element] });
             break;
         default:
             break;
