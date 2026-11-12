@@ -38,6 +38,7 @@ JClass_Cell JavaClass_Cell;
 JClass_ProgressBar JavaClass_ProgressBar;
 JClass_Item JavaClass_Item;
 JClass_MenuItem JavaClass_MenuItem;
+JClass_Slider JavaClass_Slider;
 
 int outputCounter = 0;
 
@@ -318,6 +319,22 @@ static jint LoadAccessibilityJavaClasses(JavaVM* vm, void* reserved)
 	JavaClass_ProgressBar.GetMinimum = env->GetMethodID(JavaClass_ProgressBar.me, "GetMinimum", "()D");
 	JavaClass_ProgressBar.GetMaximum = env->GetMethodID(JavaClass_ProgressBar.me, "GetMaximum", "()D");
 	// Delete local reference
+	env->DeleteLocalRef(tempLocalClassRef);
+#pragma endregion
+
+	/********
+	* Slider
+	********/
+#pragma region Slider
+	tempLocalClassRef = env->FindClass("quorum/Libraries/Interface/Controls/Slider_");
+	JavaClass_Slider.me = (jclass)env->NewGlobalRef(tempLocalClassRef);
+	JavaClass_Slider.GetValue = env->GetMethodID(JavaClass_Slider.me, "GetValue", "()D");
+	JavaClass_Slider.GetMinimum = env->GetMethodID(JavaClass_Slider.me, "GetMinimum", "()D");
+	JavaClass_Slider.GetMaximum = env->GetMethodID(JavaClass_Slider.me, "GetMaximum", "()D");
+	JavaClass_Slider.GetStep = env->GetMethodID(JavaClass_Slider.me, "GetStep", "()D");
+	JavaClass_Slider.GetPageStep = env->GetMethodID(JavaClass_Slider.me, "GetPageStep", "()D");
+	JavaClass_Slider.GetValueText = env->GetMethodID(JavaClass_Slider.me, "GetValueText", "()Ljava/lang/String;");
+	JavaClass_Slider.ChangeValue = env->GetMethodID(JavaClass_Slider.me, "ChangeValue", "(DZ)V");
 	env->DeleteLocalRef(tempLocalClassRef);
 #pragma endregion
 
