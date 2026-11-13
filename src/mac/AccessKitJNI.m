@@ -592,6 +592,13 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Interface_Accessibility_Acc
     accesskit_node_clear_children(NodeFrom(node));
 }
 
+// Names a node whose text describes this one, such as a control's open tooltip.
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Interface_Accessibility_AccessKitBinding_Node_nativeAddDescribedBy
+    (JNIEnv* env, jclass type, jlong node, jlong id)
+{
+    accesskit_node_push_described_by(NodeFrom(node), (accesskit_node_id)id);
+}
+
 JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Interface_Accessibility_AccessKitBinding_Node_nativeSetToggled
     (JNIEnv* env, jclass type, jlong node, jint value)
 {
