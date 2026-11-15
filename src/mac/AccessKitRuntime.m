@@ -100,7 +100,27 @@ enum
     QKCanDisclose = 1024,
     // An outline whose rows VoiceOver must not count ("1 of 2"): a 3D
     // item's cursor (Item3DKit). Its AXRows is empty.
-    QKUncounted = 2048
+    QKUncounted = 2048,
+    // A spreadsheet's grid (SpreadsheetKit): AccessKit gives a grid no rows
+    // unless they are list-like, and no table facts, so Mac.so gives them.
+    // count: its rows; level: its columns.
+    QKTable = 4096,
+    // One of its rows of cells. index: the row, from 0.
+    QKTableRow = 8192,
+    // A cell. index: its row, position: its column, from 0.
+    QKTableCell = 16384,
+    // A column's header (its letters). position: the column. With QKTableCell.
+    QKColumnHeader = 32768,
+    // A row's header (its number). index: the row.
+    QKRowHeader = 65536,
+    // The row of column headers, which isn't one of the table's rows.
+    QKTableHeaderRow = 131072,
+    // A cell or row in the selection (a row: the whole row is selected).
+    // AccessKit gives VoiceOver a selected state only for list-like items,
+    // so the table's AXSelectedCells and AXSelectedRows come from this.
+    QKTableSelected = 262144,
+    // The current cell, which the keys move (one per table).
+    QKTableCurrent = 524288
 };
 
 // Notices; the same numbers as MacAccessibilityExtras.java.
@@ -111,7 +131,9 @@ enum
     QKRowExpanded = 3,
     QKRowCollapsed = 4,
     QKRowCountChanged = 5,
-    QKMoved = 6
+    QKMoved = 6,
+    // AXSelectedCellsChanged, on a table whose selection or current cell moved.
+    QKSelectedCellsChanged = 7
 };
 
 // How far QKFind looks from the view before giving up, and how deep the
@@ -190,6 +212,16 @@ static BOOL hasRowCount = NO;
 static BOOL hasCustomRotors = NO;
 static BOOL hasShowMenu = NO;
 static BOOL hasSetDisclosed = NO;
+static BOOL hasColumnCount = NO;
+static BOOL hasRowIndexRange = NO;
+static BOOL hasColumnIndexRange = NO;
+static BOOL hasColumnHeaders = NO;
+static BOOL hasRowHeaders = NO;
+static BOOL hasVisibleRows = NO;
+static BOOL hasCellForColumnRow = NO;
+static BOOL hasSelectedCells = NO;
+static BOOL hasSetSelectedCells = NO;
+static BOOL hasSetSelectedRows = NO;
 
 // Where VoiceOver's show-menu and open/close requests go (QuorumRuntimeSetActionSink).
 static QuorumActionSink actionSink = NULL;
@@ -435,7 +467,7 @@ static NSInteger Index(id self, SEL _cmd)
     QuorumAccessKitExtra* extra = ExtraOf(self);
     if (extra == nil)
         return 0;
-    if ((extra.flags & QKListRow) != 0)
+    if ((extra.flags & (QKListRow | QKTableRow)) != 0)
         return extra.index < 0 ? 0 : extra.index;
     if ((extra.flags & QKOutlineRow) != 0)
     {
@@ -505,9 +537,239 @@ static NSInteger RowCount(id self, SEL _cmd)
         return 0;
     if ((extra.flags & QKOutline) != 0)
         return (NSInteger)RowsOf(self, node).count;
-    if ((extra.flags & QKList) != 0)
+    if ((extra.flags & (QKList | QKTable)) != 0)
         return extra.count < 0 ? 0 : extra.count;
     return 0;
+}
+
+// ---------------------------------------------------------------- Tables
+
+/* A table's rows of cells: its children marked QKTableRow, in order. */
+static NSArray* TableRowsOf(id table)
+{
+    NSMutableArray* rows = [NSMutableArray array];
+    for (id child in [table accessibilityChildren])
+    {
+        QuorumAccessKitExtra* extra = ExtraOf(child);
+        if (extra != nil && (extra.flags & QKTableRow) != 0)
+            [rows addObject:child];
+    }
+    return rows;
+}
+
+/* The table an element is in, walking up AccessKit's parents, or nil. */
+static id TableOf(id element)
+{
+    id current = element;
+    for (int depth = 0; depth <= QK_DEPTH_LIMIT; depth++)
+    {
+        current = [current accessibilityParent];
+        QuorumAccessKitExtra* extra = ExtraOf(current);
+        if (current == nil)
+            return nil;
+        if (extra != nil && (extra.flags & QKTable) != 0)
+            return current;
+    }
+    return nil;
+}
+
+/* A table's column headers: the children of its header row, in order. */
+static NSArray* ColumnHeadersOf(id table)
+{
+    NSMutableArray* headers = [NSMutableArray array];
+    for (id child in [table accessibilityChildren])
+    {
+        QuorumAccessKitExtra* extra = ExtraOf(child);
+        if (extra == nil || (extra.flags & QKTableHeaderRow) == 0)
+            continue;
+        for (id header in [child accessibilityChildren])
+        {
+            QuorumAccessKitExtra* headerExtra = ExtraOf(header);
+            if (headerExtra != nil && (headerExtra.flags & QKColumnHeader) != 0)
+                [headers addObject:header];
+        }
+    }
+    return headers;
+}
+
+static NSInteger ColumnCount(id self, SEL _cmd)
+{
+    QuorumAccessKitExtra* extra = ExtraOf(self);
+    if (extra == nil || (extra.flags & QKTable) == 0)
+        return 0;
+    return extra.level < 0 ? 0 : extra.level;
+}
+
+/* A cell's row, as VoiceOver's "row 3": none for a column header. */
+static NSRange RowIndexRange(id self, SEL _cmd)
+{
+    QuorumAccessKitExtra* extra = ExtraOf(self);
+    if (extra == nil || extra.index < 0 || (extra.flags & (QKTableCell | QKRowHeader)) == 0)
+        return NSMakeRange(NSNotFound, 0);
+    return NSMakeRange((NSUInteger)extra.index, 1);
+}
+
+/* A cell's column, as VoiceOver's "column 5". */
+static NSRange ColumnIndexRange(id self, SEL _cmd)
+{
+    QuorumAccessKitExtra* extra = ExtraOf(self);
+    if (extra == nil || extra.position < 0 || (extra.flags & QKTableCell) == 0)
+        return NSMakeRange(NSNotFound, 0);
+    return NSMakeRange((NSUInteger)extra.position, 1);
+}
+
+/*
+    The column headers: all of a table's, or a cell's own column's, which
+    VoiceOver reads when moving to another column.
+*/
+static id ColumnHeaders(id self, SEL _cmd)
+{
+    QuorumAccessKitExtra* extra = ExtraOf(self);
+    if (extra == nil)
+        return @[];
+    if ((extra.flags & QKTable) != 0)
+        return ColumnHeadersOf(self);
+    id table = TableOf(self);
+    if (table == nil)
+        return @[];
+    for (id header in ColumnHeadersOf(table))
+    {
+        QuorumAccessKitExtra* headerExtra = ExtraOf(header);
+        if (headerExtra != nil && headerExtra.position == extra.position)
+            return @[header];
+    }
+    return @[];
+}
+
+/* A cell's row header (the row number), which VoiceOver reads when moving to another row. */
+static id RowHeaders(id self, SEL _cmd)
+{
+    QuorumAccessKitExtra* extra = ExtraOf(self);
+    if (extra == nil || (extra.flags & QKTableCell) == 0 || (extra.flags & QKColumnHeader) != 0)
+        return @[];
+    id row = [self accessibilityParent];
+    for (id child in [row accessibilityChildren])
+    {
+        QuorumAccessKitExtra* childExtra = ExtraOf(child);
+        if (childExtra != nil && (childExtra.flags & QKRowHeader) != 0)
+            return @[child];
+    }
+    return @[];
+}
+
+static id VisibleRows(id self, SEL _cmd)
+{
+    return TableRowsOf(self);
+}
+
+/* The cell at a column and row, if it is on screen (only those have elements). */
+static id CellForColumnRow(id self, SEL _cmd, NSInteger column, NSInteger row)
+{
+    for (id rowElement in TableRowsOf(self))
+    {
+        QuorumAccessKitExtra* rowExtra = ExtraOf(rowElement);
+        if (rowExtra == nil || rowExtra.index != row)
+            continue;
+        for (id cell in [rowElement accessibilityChildren])
+        {
+            QuorumAccessKitExtra* cellExtra = ExtraOf(cell);
+            if (cellExtra != nil && (cellExtra.flags & QKTableCell) != 0 && cellExtra.position == column)
+                return cell;
+        }
+    }
+    return nil;
+}
+
+/* A table's cells (not its column headers) that have all of these flags, in order. */
+static NSArray* TableCellsWith(id table, int flags)
+{
+    NSMutableArray* cells = [NSMutableArray array];
+    for (id rowElement in TableRowsOf(table))
+    {
+        for (id cell in [rowElement accessibilityChildren])
+        {
+            QuorumAccessKitExtra* extra = ExtraOf(cell);
+            if (extra != nil && (extra.flags & QKTableCell) != 0 && (extra.flags & QKColumnHeader) == 0
+                && (extra.flags & flags) == flags)
+                [cells addObject:cell];
+        }
+    }
+    return cells;
+}
+
+/*
+    A table's selected cells (AXSelectedCells), as a native table gives
+    them: VoiceOver follows a table's selection, not a focus moving inside
+    it, so this, with AXSelectedCellsChanged (QKSelectedCellsChanged), is
+    how it keeps up with the arrow keys.
+*/
+static id SelectedCells(id self, SEL _cmd)
+{
+    QuorumAccessKitExtra* extra = ExtraOf(self);
+    if (extra == nil || (extra.flags & QKTable) == 0)
+        return @[];
+    return TableCellsWith(self, QKTableSelected);
+}
+
+/*
+    VoiceOver choosing cells (its cursor moving in the table): the first
+    cell becomes the current one, as clicking it does. A column header
+    selects its column. The request goes to Java's queue, as VO-Shift-M's
+    does; the table reports its new selection after Quorum's next update.
+*/
+static void SetSelectedCells(id self, SEL _cmd, NSArray* cells)
+{
+    QuorumAccessKitExtra* extra = ExtraOf(self);
+    if (extra == nil || (extra.flags & QKTable) == 0 || actionSink == NULL || cells == nil)
+        return;
+    for (id cell in cells)
+    {
+        uint64_t node = NodeIdOf(cell);
+        QuorumAccessKitExtra* cellExtra = ExtraFor(node);
+        if (cellExtra == nil || (cellExtra.flags & QKTableCell) == 0)
+            continue;
+        if ((cellExtra.flags & QKTableCurrent) != 0 && cells.count == 1)
+            return;
+        BOOL header = (cellExtra.flags & QKColumnHeader) != 0;
+        actionSink((int)(header ? ACCESSKIT_ACTION_CLICK : ACCESSKIT_ACTION_FOCUS), node, actionSinkData);
+        return;
+    }
+}
+
+/*
+    VoiceOver choosing a row: the current cell moves to that row, in the
+    same column (a row's own selection is for whole rows, which its row
+    header's CLICK makes).
+*/
+static void SetSelectedRows(id self, SEL _cmd, NSArray* rows)
+{
+    QuorumAccessKitExtra* extra = ExtraOf(self);
+    if (extra == nil || (extra.flags & QKTable) == 0 || actionSink == NULL || rows == nil || rows.count == 0)
+        return;
+    NSInteger column = -1;
+    NSArray* current = TableCellsWith(self, QKTableCurrent);
+    if (current.count > 0)
+        column = ExtraOf(current[0]).position;
+    id first = nil;
+    for (id cell in [rows[0] accessibilityChildren])
+    {
+        QuorumAccessKitExtra* cellExtra = ExtraOf(cell);
+        if (cellExtra == nil || (cellExtra.flags & QKTableCell) == 0 || (cellExtra.flags & QKColumnHeader) != 0)
+            continue;
+        if (first == nil)
+            first = cell;
+        if (cellExtra.position == column)
+        {
+            first = cell;
+            break;
+        }
+    }
+    if (first == nil)
+        return;
+    QuorumAccessKitExtra* chosen = ExtraOf(first);
+    if (chosen != nil && (chosen.flags & QKTableCurrent) != 0)
+        return;
+    actionSink((int)ACCESSKIT_ACTION_FOCUS, NodeIdOf(first), actionSinkData);
 }
 
 /*
@@ -569,6 +831,8 @@ static id Rows(id self, SEL _cmd)
     QuorumAccessKitExtra* extra = ExtraFor(node);
     if (extra != nil && (extra.flags & QKOutline) != 0)
         return RowsOf(self, node);
+    if (extra != nil && (extra.flags & QKTable) != 0)
+        return TableRowsOf(self);
     // VoiceOver follows a selection only to a row the outline lists, so an
     // "uncounted" outline (the terrain's cursor) lists just its selected
     // row: VoiceOver reads each new one, with nothing else to count.
@@ -587,6 +851,18 @@ static id SelectedRows(id self, SEL _cmd)
 {
     uint64_t node = NodeIdOf(self);
     QuorumAccessKitExtra* extra = ExtraFor(node);
+    // A table's rows that are wholly selected.
+    if (extra != nil && (extra.flags & QKTable) != 0)
+    {
+        NSMutableArray* rows = [NSMutableArray array];
+        for (id row in TableRowsOf(self))
+        {
+            QuorumAccessKitExtra* rowExtra = ExtraOf(row);
+            if (rowExtra != nil && (rowExtra.flags & QKTableSelected) != 0)
+                [rows addObject:row];
+        }
+        return rows;
+    }
     if (extra == nil || (extra.flags & QKOutline) == 0)
         return ((QKObjectGetter)originalSelectedRows)(self, _cmd);
     NSMutableArray* selected = [NSMutableArray array];
@@ -664,7 +940,17 @@ static BOOL SelectorAllowed(id self, SEL _cmd, SEL selector)
         || (selector == @selector(isAccessibilityExpanded) && hasExpanded)
         || (selector == @selector(accessibilityRowCount) && hasRowCount)
         || (selector == @selector(accessibilityPerformShowMenu) && hasShowMenu)
-        || (selector == @selector(setAccessibilityDisclosed:) && hasSetDisclosed);
+        || (selector == @selector(setAccessibilityDisclosed:) && hasSetDisclosed)
+        || (selector == @selector(accessibilityColumnCount) && hasColumnCount)
+        || (selector == @selector(accessibilityRowIndexRange) && hasRowIndexRange)
+        || (selector == @selector(accessibilityColumnIndexRange) && hasColumnIndexRange)
+        || (selector == @selector(accessibilityColumnHeaderUIElements) && hasColumnHeaders)
+        || (selector == @selector(accessibilityRowHeaderUIElements) && hasRowHeaders)
+        || (selector == @selector(accessibilityVisibleRows) && hasVisibleRows)
+        || (selector == @selector(accessibilityCellForColumn:row:) && hasCellForColumnRow)
+        || (selector == @selector(accessibilitySelectedCells) && hasSelectedCells)
+        || (selector == @selector(setAccessibilitySelectedCells:) && hasSetSelectedCells)
+        || (selector == @selector(setAccessibilitySelectedRows:) && hasSetSelectedRows);
     if (ours)
     {
         QuorumAccessKitExtra* extra = ExtraOf(self);
@@ -675,11 +961,24 @@ static BOOL SelectorAllowed(id self, SEL _cmd, SEL selector)
         if (selector == @selector(setAccessibilityDisclosed:))
             return (extra.flags & QKCanDisclose) != 0 && (extra.flags & QKOutlineRow) != 0 && actionSink != NULL;
         if (selector == @selector(accessibilityIndex))
-            return (extra.flags & (QKOutlineRow | QKListRow)) != 0;
+            return (extra.flags & (QKOutlineRow | QKListRow | QKTableRow)) != 0;
+        if (selector == @selector(accessibilityColumnCount) || selector == @selector(accessibilityVisibleRows)
+            || selector == @selector(accessibilityCellForColumn:row:) || selector == @selector(accessibilitySelectedCells))
+            return (extra.flags & QKTable) != 0;
+        if (selector == @selector(setAccessibilitySelectedCells:) || selector == @selector(setAccessibilitySelectedRows:))
+            return (extra.flags & QKTable) != 0 && actionSink != NULL;
+        if (selector == @selector(accessibilityRowIndexRange))
+            return (extra.flags & (QKTableCell | QKRowHeader)) != 0 && extra.index >= 0;
+        if (selector == @selector(accessibilityColumnIndexRange))
+            return (extra.flags & QKTableCell) != 0;
+        if (selector == @selector(accessibilityColumnHeaderUIElements))
+            return (extra.flags & (QKTable | QKTableCell)) != 0;
+        if (selector == @selector(accessibilityRowHeaderUIElements))
+            return (extra.flags & QKTableCell) != 0 && (extra.flags & QKColumnHeader) == 0;
         if (selector == @selector(isAccessibilityExpanded))
             return (extra.flags & QKExpandable) != 0;
         if (selector == @selector(accessibilityRowCount))
-            return (extra.flags & (QKOutline | QKList)) != 0;
+            return (extra.flags & (QKOutline | QKList | QKTable)) != 0;
         // A list row drawn as a tree has a level too (ListItem:GetAccessibilityLevel).
         if (selector == @selector(accessibilityDisclosureLevel))
             return (extra.flags & (QKOutlineRow | QKListRow)) != 0;
@@ -690,7 +989,7 @@ static BOOL SelectorAllowed(id self, SEL _cmd, SEL selector)
         || (selector == @selector(accessibilitySelectedRows) && originalSelectedRows != NULL))
     {
         QuorumAccessKitExtra* extra = ExtraOf(self);
-        if (extra != nil && (extra.flags & QKOutline) != 0)
+        if (extra != nil && (extra.flags & (QKOutline | QKTable)) != 0)
             return YES;
     }
     else if (selector == @selector(accessibilityAttributeValue:) && originalAttributeValue != NULL)
@@ -941,6 +1240,24 @@ void QuorumRuntimeInstall(void)
     hasRowCount = Add(found, @selector(accessibilityRowCount), (IMP)RowCount, integerGetter);
     hasCustomRotors = Add(found, @selector(accessibilityCustomRotors), (IMP)CustomRotors, objectGetter);
 
+    // Tables (SpreadsheetKit).
+    char rangeGetter[64];
+    char cellGetter[32];
+    snprintf(rangeGetter, sizeof(rangeGetter), "%s@:", @encode(NSRange));
+    snprintf(cellGetter, sizeof(cellGetter), "%s@:%s%s", @encode(id), @encode(NSInteger), @encode(NSInteger));
+    hasColumnCount = Add(found, @selector(accessibilityColumnCount), (IMP)ColumnCount, integerGetter);
+    hasRowIndexRange = Add(found, @selector(accessibilityRowIndexRange), (IMP)RowIndexRange, rangeGetter);
+    hasColumnIndexRange = Add(found, @selector(accessibilityColumnIndexRange), (IMP)ColumnIndexRange, rangeGetter);
+    hasColumnHeaders = Add(found, @selector(accessibilityColumnHeaderUIElements), (IMP)ColumnHeaders, objectGetter);
+    hasRowHeaders = Add(found, @selector(accessibilityRowHeaderUIElements), (IMP)RowHeaders, objectGetter);
+    hasVisibleRows = Add(found, @selector(accessibilityVisibleRows), (IMP)VisibleRows, objectGetter);
+    hasCellForColumnRow = Add(found, @selector(accessibilityCellForColumn:row:), (IMP)CellForColumnRow, cellGetter);
+    char objectSetter[16];
+    snprintf(objectSetter, sizeof(objectSetter), "%s@:%s", @encode(void), @encode(id));
+    hasSelectedCells = Add(found, @selector(accessibilitySelectedCells), (IMP)SelectedCells, objectGetter);
+    hasSetSelectedCells = Add(found, @selector(setAccessibilitySelectedCells:), (IMP)SetSelectedCells, objectSetter);
+    hasSetSelectedRows = Add(found, @selector(setAccessibilitySelectedRows:), (IMP)SetSelectedRows, objectSetter);
+
     char boolAction[16];
     char boolSetter[16];
     snprintf(boolAction, sizeof(boolAction), "%s@:", @encode(BOOL));
@@ -1066,6 +1383,9 @@ static void Post(NSView* view, QKNotice notice)
             break;
         case QKRowCountChanged:
             NSAccessibilityPostNotification(element, NSAccessibilityRowCountChangedNotification);
+            break;
+        case QKSelectedCellsChanged:
+            NSAccessibilityPostNotification(element, NSAccessibilitySelectedCellsChangedNotification);
             break;
         case QKMoved:
             // AccessKit posts nothing when only bounds change, so VoiceOver
