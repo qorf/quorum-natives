@@ -532,6 +532,62 @@ extern "C" JNIEXPORT jlong JNICALL NATIVE_VULKAN(NativeVulkanPipelineCache, Crea
     return ToJava(cache);
 }
 
+// A pipeline cache started from data saved earlier; null or empty data gives an empty cache, as
+// does data from another device or driver version (the driver checks the header and ignores it).
+extern "C" JNIEXPORT jlong JNICALL NATIVE_VULKAN(NativeVulkanPipelineCache, CreatePipelineCacheWithData)(JNIEnv* env, jclass, jlong device,
+    jbyteArray dataArray)
+{
+    std::vector<jbyte> data;
+    if (dataArray != nullptr)
+    {
+        jsize size = env->GetArrayLength(dataArray);
+        data.resize(static_cast<size_t>(size));
+        if (size > 0)
+            env->GetByteArrayRegion(dataArray, 0, size, data.data());
+    }
+
+    VkPipelineCacheCreateInfo createInfo = {VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO};
+    createInfo.initialDataSize = data.size();
+    createInfo.pInitialData = data.empty() ? nullptr : data.data();
+
+    VkPipelineCache cache = VK_NULL_HANDLE;
+    VkResult result = vkCreatePipelineCache(FromJava<VkDevice>(device), &createInfo, nullptr, &cache);
+    if (result != VK_SUCCESS)
+    {
+        NativeVulkanLog("vkCreatePipelineCache failed: %s", NativeVulkanResultName(result));
+        return 0;
+    }
+    return ToJava(cache);
+}
+
+// What a pipeline cache holds now, to save to a file: asked twice, once for the size, then for
+// the bytes. Empty if there is nothing or it fails.
+extern "C" JNIEXPORT jbyteArray JNICALL NATIVE_VULKAN(NativeVulkanPipelineCache, GetPipelineCacheData)(JNIEnv* env, jclass, jlong device,
+    jlong cache)
+{
+    VkDevice vulkanDevice = FromJava<VkDevice>(device);
+    VkPipelineCache vulkanCache = FromJava<VkPipelineCache>(cache);
+
+    size_t size = 0;
+    VkResult result = vkGetPipelineCacheData(vulkanDevice, vulkanCache, &size, nullptr);
+    if (result != VK_SUCCESS || size == 0)
+        return env->NewByteArray(0);
+
+    std::vector<jbyte> data(size);
+    result = vkGetPipelineCacheData(vulkanDevice, vulkanCache, &size, data.data());
+    // VK_INCOMPLETE: the cache grew between the two calls; what was written is still valid.
+    if (result != VK_SUCCESS && result != VK_INCOMPLETE)
+    {
+        NativeVulkanLog("vkGetPipelineCacheData failed: %s", NativeVulkanResultName(result));
+        return env->NewByteArray(0);
+    }
+
+    jbyteArray array = env->NewByteArray(static_cast<jsize>(size));
+    if (array != nullptr)
+        env->SetByteArrayRegion(array, 0, static_cast<jsize>(size), data.data());
+    return array;
+}
+
 /*
 A graphics pipeline from NativeVulkanPipeline's arrays, as
 DesktopVulkanPipeline makes it: the viewport and scissor are dynamic, there's

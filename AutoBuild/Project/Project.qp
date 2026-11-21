@@ -1,13 +1,21 @@
 {
-    "AndroidAssets" : "media",
+    "AndroidAssets" : "/media",
+    "AppIcon" : "",
+    "AppName" : "",
     "DevelopmentEnvironmentVersion" : "Quorum Studio 4.0.3",
     "ExecutableName" : "Default",
-    "IOSAssets" : "media",
+    "GitShowWholeRepository" : true,
+    "IOSAssets" : "/media",
     "IOS_BUNDLE" : "org.quorumlanguage",
     "IOS_DEVICE" : "iPhone 12 Simulator",
+    "IOS_PROVISIONING" : "",
+    "IOS_SIGNATURE" : "",
+    "ImageSheetEnabled" : false,
+    "ImageSheetRebuildOnCompile" : false,
     "Main" : "/SourceCode/Main.quorum",
     "Project Version" : "1.0",
     "ProjectName" : "AutoBuild",
     "ProjectType" : "JavaType",
+    "PythonSpikeProgramSlot" : "0",
     "iosVersion" : "15.0"
 }

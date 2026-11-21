@@ -20,3 +20,4 @@ ios/CPackConfig.cmake
 install_manifest.txt
 ios/Release-iphoneos/
 ios/releases/
+/AutoBuild/Settings.txt
