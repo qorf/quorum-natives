@@ -33,6 +33,20 @@ extern "C" JNIEXPORT jlong JNICALL NATIVE_VULKAN(NativeVulkanCommandBuffer, Allo
     return ToJava(commandBuffer);
 }
 
+// Frees the pool and every command buffer made from it.
+extern "C" JNIEXPORT void JNICALL NATIVE_VULKAN(NativeVulkanCommandPool, DestroyCommandPool)(JNIEnv*, jclass, jlong device, jlong pool)
+{
+    vkDestroyCommandPool(FromJava<VkDevice>(device), FromJava<VkCommandPool>(pool), nullptr);
+}
+
+// Gives one command buffer back to its pool.
+extern "C" JNIEXPORT void JNICALL NATIVE_VULKAN(NativeVulkanCommandBuffer, FreeCommandBuffer)(JNIEnv*, jclass, jlong device, jlong pool,
+        jlong commandBuffer)
+{
+    VkCommandBuffer buffer = FromJava<VkCommandBuffer>(commandBuffer);
+    vkFreeCommandBuffers(FromJava<VkDevice>(device), FromJava<VkCommandPool>(pool), 1, &buffer);
+}
+
 extern "C" JNIEXPORT jboolean JNICALL NATIVE_VULKAN(NativeVulkanCommandBuffer, BeginCommandBuffer)(JNIEnv*, jclass, jlong commandBuffer)
 {
     VkCommandBufferBeginInfo beginInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
@@ -534,6 +548,12 @@ extern "C" JNIEXPORT jlong JNICALL NATIVE_VULKAN(NativeVulkanPipelineCache, Crea
 
 // A pipeline cache started from data saved earlier; null or empty data gives an empty cache, as
 // does data from another device or driver version (the driver checks the header and ignores it).
+// Frees a pipeline cache; pipelines made with it keep working.
+extern "C" JNIEXPORT void JNICALL NATIVE_VULKAN(NativeVulkanPipelineCache, DestroyPipelineCache)(JNIEnv*, jclass, jlong device, jlong cache)
+{
+    vkDestroyPipelineCache(FromJava<VkDevice>(device), FromJava<VkPipelineCache>(cache), nullptr);
+}
+
 extern "C" JNIEXPORT jlong JNICALL NATIVE_VULKAN(NativeVulkanPipelineCache, CreatePipelineCacheWithData)(JNIEnv* env, jclass, jlong device,
     jbyteArray dataArray)
 {
@@ -731,6 +751,12 @@ extern "C" JNIEXPORT jlong JNICALL NATIVE_VULKAN(NativeVulkanComputePipeline, Cr
         return 0;
     }
     return ToJava(pipeline);
+}
+
+// A compute pipeline is freed as a graphics one is; this is NativeVulkanComputePipeline's own entry.
+extern "C" JNIEXPORT void JNICALL NATIVE_VULKAN(NativeVulkanComputePipeline, DestroyComputePipeline)(JNIEnv*, jclass, jlong device, jlong pipeline)
+{
+    vkDestroyPipeline(FromJava<VkDevice>(device), FromJava<VkPipeline>(pipeline), nullptr);
 }
 
 extern "C" JNIEXPORT void JNICALL NATIVE_VULKAN(NativeVulkanPipeline, DestroyPipeline)(JNIEnv*, jclass, jlong device, jlong pipeline)

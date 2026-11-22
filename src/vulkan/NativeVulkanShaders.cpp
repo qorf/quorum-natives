@@ -128,3 +128,9 @@ extern "C" JNIEXPORT jlong JNICALL NATIVE_VULKAN(NativeVulkanShaders, CreateShad
     }
     return ToJava(module);
 }
+
+// Frees a shader module; pipelines made with it keep working.
+extern "C" JNIEXPORT void JNICALL NATIVE_VULKAN(NativeVulkanShaders, DestroyShaderModule)(JNIEnv*, jclass, jlong device, jlong module)
+{
+    vkDestroyShaderModule(FromJava<VkDevice>(device), FromJava<VkShaderModule>(module), nullptr);
+}
